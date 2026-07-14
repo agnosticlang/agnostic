@@ -31,3 +31,7 @@ resulting `agnostic` binary supports `--backend=llvm|nvm|gcc`,
 Examples can be found in the `examples/`[*](https://github.com/agnosticlang/agnostic/tree/main/examples) directory.
 
 The original authors are [Zennix](https://github.com/z3nnix/) and [Noxzion](https://github.com/noxzion/)
+
+### License
+
+The Agnostic compiler and standard library are licensed under the Apache 2.0 License.
