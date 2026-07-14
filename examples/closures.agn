@@ -1,0 +1,30 @@
+package main
+
+import "stdio"
+
+func makeCounter() func() -> i64 {
+    var count i64 = 0
+    var next func() -> i64 = func() -> i64 {
+        count = count + 1
+        return count
+    }
+    return next
+}
+
+func apply(f func(i64) -> i64, x i64) i64 {
+    return f(x)
+}
+
+func main() {
+    var counter func() -> i64 = makeCounter()
+    stdio.Println(counter())
+    stdio.Println(counter())
+    stdio.Println(counter())
+
+    var double func(i64) -> i64 = func(x i64) -> i64 {
+        return x * 2
+    }
+    stdio.Println(apply(double, 21))
+
+    return
+}

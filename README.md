@@ -4,14 +4,30 @@ Write Once, Run Anywhere.
 </div>
 <br>
 
+<p align="center">
+  <img src="https://img.shields.io/github/actions/workflow/status/agnosticlang/agnostic/ci.yml?branch=main&style=flat-for-the-badge&logo=github" alt="Build Status">
+  <img src="https://img.shields.io/github/license/agnosticlang/agnostic?style=flat-for-the-badge&color=blue" alt="License">
+  <img src="https://img.shields.io/github/stars/agnosticlang/agnostic?style=flat-for-the-badge&color=gold" alt="Stars">
+  <img src="https://img.shields.io/github/issues/agnosticlang/agnostic?style=flat-for-the-badge&color=red" alt="Issues">
+</p>
+</div>
+<br>
+
 This repository contains the Agnostic compiler, standard library and tools.
 
-> [!IMPORTANT]
-> The original project has been archived and is no longer maintained. This is a fork of [Perano](https://github.com/noxzion/perano-lang)
+### Building
 
+```sh
+cmake -S . -B build
+cmake --build build -j$(nproc)
+```
+
+Requires LLVM (found via `find_package(LLVM CONFIG REQUIRED)`). The
+resulting `agnostic` binary supports `--backend=llvm|nvm|gcc`,
+`--mem=arc|manual|orc`, and `--target-os=`.
 
 ### Examples
 
-📜 Examples can be found in the `examples/`[*](https://github.com/AnmiTaliDev/agnostic/tree/main/examples) directory.
+Examples can be found in the `examples/`[*](https://github.com/agnosticlang/agnostic/tree/main/examples) directory.
 
-The original author are [zennix](https://github.com/z3nnix/) and [noxzion](https://github.com/noxzion/)
+The original authors are [Zennix](https://github.com/z3nnix/) and [Noxzion](https://github.com/noxzion/)

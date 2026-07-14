@@ -1,0 +1,30 @@
+package main
+
+import "stdio"
+
+struct Platform {
+    write func(i64, i64, i64) -> i64
+}
+
+func linuxWrite(fd i64, buf i64, len i64) i64 {
+    return 1
+}
+
+func stubWrite(fd i64, buf i64, len i64) i64 {
+    return 0
+}
+
+func main() {
+    var platform Platform
+    comptime {
+        if TARGET_OS == "linux" {
+            platform.write = linuxWrite
+        } else {
+            platform.write = stubWrite
+        }
+    }
+
+    stdio.Println(platform.write(1, 0, 4))
+
+    return
+}

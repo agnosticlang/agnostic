@@ -4,55 +4,46 @@ package stdio
 
 // Print an integer without newline
 pub fn Print(value int) {
-    // Implemented in compiler
     return
 }
 
 // Print an integer with newline
 pub fn Println(value int) {
-    // Implemented in compiler
     return
 }
 
 // Print a string without newline
 pub fn PrintStr(text string) {
-    // Implemented in compiler
     return
 }
 
 // Print a string with newline
 pub fn PrintlnStr(text string) {
-    // Implemented in compiler
     return
 }
 
 // Print a character
 pub fn PrintChar(ch int) {
-    // Implemented in compiler
     return
 }
 
 // Read an integer from stdin
 pub fn ReadInt() int {
-    // Implemented in compiler
     return 0
 }
 
 // Read a single character from stdin
 pub fn ReadChar() int {
-    // Implemented in compiler
     return 0
 }
 
 // Read a line from stdin (returns buffer address)
 pub fn ReadLine(buffer int, maxlen int) int {
-    // Implemented in compiler
     // Returns number of characters read
     return 0
 }
 
 // Flush output buffer
 pub fn Flush() {
-    // Implemented in compiler
     return
 }

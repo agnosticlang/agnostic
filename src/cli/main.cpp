@@ -1,0 +1,212 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 AnmiTaliDev <anmitalidev@nuros.org>
+#include "ast/ast.hpp"
+#include "backend/gcc/backend.hpp"
+#include "backend/llvm/codegen.hpp"
+#include "backend/nvm/codegen.hpp"
+#include "lexer/lexer.hpp"
+#include "parser/parser.hpp"
+#include "parser/typechecker.hpp"
+
+#include <cstdio>
+#include <cstdlib>
+#include <filesystem>
+#include <fstream>
+#include <iostream>
+#include <optional>
+#include <set>
+#include <sstream>
+#include <string>
+
+namespace fs = std::filesystem;
+
+namespace {
+
+std::string readFile(const std::string& path) {
+    std::ifstream in(path);
+    if (!in) {
+        std::cerr << "error: could not read file: " << path << "\n";
+        std::exit(1);
+    }
+    std::stringstream ss;
+    ss << in.rdbuf();
+    return ss.str();
+}
+
+agn::ast::Program parseSource(const std::string& source, const std::string& file) {
+    agn::lexer::Lexer lexer(source, file);
+    auto tokens = lexer.tokenize();
+    agn::parser::Parser parser(tokens, file);
+    return parser.parse();
+}
+
+fs::path findModuleFile(const std::string& name, const fs::path& sourceDir, const fs::path& exeDir) {
+    for (auto ext : {".agn", ".per"}) {
+        fs::path candidate = sourceDir / (name + ext);
+        if (fs::exists(candidate)) return candidate;
+    }
+    for (auto ext : {".agn", ".per"}) {
+        fs::path candidate = fs::path("stdlib") / (name + ext);
+        if (fs::exists(candidate)) return candidate;
+    }
+    for (auto ext : {".agn", ".per"}) {
+        fs::path candidate = exeDir / "stdlib" / (name + ext);
+        if (fs::exists(candidate)) return candidate;
+    }
+    return {};
+}
+
+void loadModules(agn::ast::Program& program, const fs::path& sourceDir, const fs::path& exeDir,
+                  std::set<std::string>& loaded) {
+    auto imports = program.imports;
+    for (auto& imp : imports) {
+        if (loaded.count(imp.path)) continue;
+        loaded.insert(imp.path);
+
+        fs::path file = findModuleFile(imp.path, sourceDir, exeDir);
+        if (file.empty()) {
+            std::cerr << "error: could not find module '" << imp.path << "'\n";
+            std::exit(1);
+        }
+
+        auto modSource = readFile(file.string());
+        auto modProgram = parseSource(modSource, file.string());
+        loadModules(modProgram, sourceDir, exeDir, loaded);
+
+        for (auto& [name, sub] : modProgram.modules) program.modules[name] = std::move(sub);
+
+        agn::ast::Module mod;
+        mod.name = imp.path;
+        mod.functions = std::move(modProgram.functions);
+        program.modules[imp.path] = std::move(mod);
+    }
+}
+
+void printUsage(const char* argv0) {
+    std::cerr << "Usage: " << argv0 << " <source.agn> [options]\n"
+              << "  --backend=llvm|nvm|gcc   select codegen backend (default: llvm)\n"
+              << "  --mem=arc|manual|orc     select memory management mode (default: arc)\n"
+              << "  --target-os=linux|freebsd|windows|hurd  (default: linux, only linux implemented)\n"
+              << "  --output=<path>          output executable path\n";
+}
+
+} // namespace
+
+int main(int argc, char** argv) {
+    if (argc < 2) {
+        printUsage(argv[0]);
+        return 1;
+    }
+
+    std::string sourceFile;
+    std::string backend = "llvm";
+    std::string memMode = "arc";
+    std::string targetOs = "linux";
+    std::string output;
+
+    for (int i = 1; i < argc; i++) {
+        std::string arg = argv[i];
+        if (arg.rfind("--backend=", 0) == 0) backend = arg.substr(10);
+        else if (arg.rfind("--mem=", 0) == 0) memMode = arg.substr(6);
+        else if (arg.rfind("--target-os=", 0) == 0) targetOs = arg.substr(12);
+        else if (arg.rfind("--output=", 0) == 0) output = arg.substr(9);
+        else if (arg == "--llvm") backend = "llvm";
+        else if (arg == "--nvm") backend = "nvm";
+        else if (arg == "--gcc") backend = "gcc";
+        else if (sourceFile.empty()) sourceFile = arg;
+        else {
+            std::cerr << "error: unrecognized argument: " << arg << "\n";
+            return 1;
+        }
+    }
+
+    if (sourceFile.empty()) {
+        printUsage(argv[0]);
+        return 1;
+    }
+
+    fs::path exeDir = fs::absolute(argv[0]).parent_path();
+    fs::path sourceDir = fs::path(sourceFile).parent_path();
+    if (sourceDir.empty()) sourceDir = ".";
+
+    std::string source = readFile(sourceFile);
+    agn::ast::Program program = parseSource(source, sourceFile);
+
+    std::set<std::string> loaded;
+    loadModules(program, sourceDir, exeDir, loaded);
+
+    agn::parser::TypeChecker checker(targetOs, "x86_64", memMode);
+    if (!checker.checkProgram(program)) {
+        std::cerr << "type checking failed with " << checker.errors().size() << " error(s):\n";
+        checker.printErrors();
+        return 1;
+    }
+
+    std::string stem = sourceFile;
+    auto dot = stem.rfind(".agn");
+    if (dot != std::string::npos && dot == stem.size() - 4) stem = stem.substr(0, dot);
+    std::string finalOutput = output.empty() ? stem : output;
+
+    if (backend == "gcc") {
+        agn::backend::gcc::GccBackend gccBackend;
+        std::string gccError;
+        gccBackend.generate(program, finalOutput, gccError);
+        std::cerr << "error: " << gccError << "\n";
+        return 1;
+    }
+
+    if (backend == "nvm") {
+        agn::backend::nvm::NVMCodeGen nvmCodegen(checker);
+        auto bytecode = nvmCodegen.generate(program);
+        std::ofstream out(finalOutput + ".bin", std::ios::binary);
+        out.write(reinterpret_cast<const char*>(bytecode.data()), std::streamsize(bytecode.size()));
+        out.close();
+        std::cout << "Compilation successful: " << finalOutput << ".bin\n";
+        return 0;
+    }
+
+    if (targetOs != "linux") {
+        std::cerr << "error: only --target-os=linux has a real platform/runtime implementation\n";
+        return 1;
+    }
+
+    agn::backend::llvm_backend::MemMode mode = agn::backend::llvm_backend::MemMode::Arc;
+    if (memMode == "manual") mode = agn::backend::llvm_backend::MemMode::Manual;
+    else if (memMode == "orc") mode = agn::backend::llvm_backend::MemMode::Orc;
+    else if (memMode != "arc") {
+        std::cerr << "error: unknown --mem= value '" << memMode << "'\n";
+        return 1;
+    }
+
+    agn::backend::llvm_backend::Codegen codegen(checker, mode, fs::path(sourceFile).filename().string());
+    codegen.generate(program);
+
+    std::string objPath = finalOutput + ".o";
+    std::string codegenError;
+    if (!codegen.emitObjectFile(objPath, codegenError)) {
+        std::cerr << "error: " << codegenError << "\n";
+        return 1;
+    }
+
+    fs::path buildDir = exeDir.parent_path().parent_path();
+    fs::path runtimeLib = buildDir / "src/backend/llvm/runtime/libagn_llvm_runtime.a";
+    fs::path memoryLib = buildDir / ("src/memory/" + memMode + "/libagn_memory_" + memMode + ".a");
+    fs::path manualLib = buildDir / "src/memory/manual/libagn_memory_manual.a";
+    fs::path platformLib = buildDir / "src/platform/linux/libagn_platform_linux.a";
+
+    std::string libGroup = "\"" + runtimeLib.string() + "\" \"" + memoryLib.string() + "\"";
+    if (memMode != "manual") libGroup += " \"" + manualLib.string() + "\"";
+    libGroup += " \"" + platformLib.string() + "\"";
+
+    std::string linkCmd = "cc -nostdlib -static -no-pie -e _start -o \"" + finalOutput + "\" \"" + objPath +
+                          "\" -Wl,--start-group " + libGroup + " -Wl,--end-group";
+    int rc = std::system(linkCmd.c_str());
+    if (rc != 0) {
+        std::cerr << "error: linking failed (object file kept at " << objPath << ")\n";
+        return 1;
+    }
+
+    std::remove(objPath.c_str());
+    std::cout << "Compilation successful: " << finalOutput << "\n";
+    return 0;
+}

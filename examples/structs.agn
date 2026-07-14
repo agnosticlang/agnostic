@@ -1,0 +1,31 @@
+package main
+
+import "stdio"
+
+struct Vector2 {
+    x i64,
+    y i64
+}
+
+func (v Vector2) Length2() i64 {
+    return v.x * v.x + v.y * v.y
+}
+
+func (v Vector2) Add(other Vector2) Vector2 {
+    return Vector2{x: v.x + other.x, y: v.y + other.y}
+}
+
+func main() {
+    var a Vector2 = Vector2{x: 3, y: 4}
+    stdio.Println(a.Length2())
+
+    var b Vector2 = Vector2{x: 1, y: 1}
+    var c Vector2 = a.Add(b)
+    stdio.Println(c.x)
+    stdio.Println(c.y)
+
+    a.x = 10
+    stdio.Println(a.x)
+
+    return
+}

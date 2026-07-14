@@ -182,15 +182,16 @@ pub fn IsPrime(n int) int {
         var x int = n / 2
         var prev int = 0
         var count int = 0
-        
-        for x != prev {
+        var done int = 0
+
+        for x != prev && done == 0 {
             if count > 20 {
-                limit = x
-                break
+                done = 1
+            } else {
+                prev = x
+                x = (x + n / x) / 2
+                count = count + 1
             }
-            prev = x
-            x = (x + n / x) / 2
-            count = count + 1
         }
         limit = x
     }
