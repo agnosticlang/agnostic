@@ -4,7 +4,7 @@ find_package(LLVM CONFIG REQUIRED)
 message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
 
 add_library(agn_backend_llvm STATIC codegen.cpp)
-target_include_directories(agn_backend_llvm PUBLIC ${CMAKE_SOURCE_DIR}/include)
+target_include_directories(agn_backend_llvm PUBLIC ${PROJECT_SOURCE_DIR}/include)
 target_include_directories(agn_backend_llvm PRIVATE ${LLVM_INCLUDE_DIRS})
 target_compile_definitions(agn_backend_llvm PRIVATE ${LLVM_DEFINITIONS})
 target_link_libraries(agn_backend_llvm PUBLIC agn_ast agn_parser)

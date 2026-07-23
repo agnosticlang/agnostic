@@ -28,3 +28,15 @@ add_subdirectory(src/backend/llvm)
 add_subdirectory(src/backend/nvm)
 add_subdirectory(src/backend/gcc)
 add_subdirectory(src/cli)
+
+add_library(agnostic_lib INTERFACE)
+target_link_libraries(agnostic_lib INTERFACE
+    agn_ast
+    agn_misc
+    agn_lexer
+    agn_parser
+    agn_backend_llvm
+    agn_backend_nvm
+    agn_backend_gcc
+)
+set_target_properties(agnostic_lib PROPERTIES EXPORT_NAME agnostic)
