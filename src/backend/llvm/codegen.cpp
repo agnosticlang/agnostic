@@ -2,6 +2,7 @@
 // SPDX-FileCopyrightText: 2026 AnmiTaliDev <anmitalidev@nuros.org>
 #include "backend/llvm/codegen.hpp"
 
+#include <llvm/Config/llvm-config.h>
 #include <llvm/IR/BasicBlock.h>
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/DerivedTypes.h>
@@ -19,6 +20,7 @@
 #include <llvm/Target/TargetMachine.h>
 #include <llvm/Target/TargetOptions.h>
 #include <llvm/TargetParser/Host.h>
+#include <llvm/TargetParser/Triple.h>
 
 #include <unordered_map>
 #include <unordered_set>
@@ -1069,21 +1071,34 @@ bool Codegen::emitObjectFile(const std::string& path, std::string& errorOut) {
 
     llvm::Triple triple(llvm::sys::getDefaultTargetTriple());
     std::string lookupError;
+#if LLVM_VERSION_MAJOR >= 19
     const llvm::Target* target = llvm::TargetRegistry::lookupTarget(triple, lookupError);
+#else
+    const llvm::Target* target = llvm::TargetRegistry::lookupTarget(triple.str(), lookupError);
+#endif
     if (!target) {
         errorOut = lookupError;
         return false;
     }
 
     llvm::TargetOptions opts;
+#if LLVM_VERSION_MAJOR >= 19
     auto* machine = target->createTargetMachine(triple, "generic", "", opts,
                                                  llvm::Reloc::PIC_, std::nullopt, llvm::CodeGenOptLevel::Default);
+#else
+    auto* machine = target->createTargetMachine(triple.str(), "generic", "", opts,
+                                                 llvm::Reloc::PIC_, std::nullopt, llvm::CodeGenOptLevel::Default);
+#endif
     if (!machine) {
         errorOut = "failed to create target machine";
         return false;
     }
 
+#if LLVM_VERSION_MAJOR >= 19
     impl_->mod->setTargetTriple(triple);
+#else
+    impl_->mod->setTargetTriple(triple.str());
+#endif
     impl_->mod->setDataLayout(machine->createDataLayout());
 
     std::error_code ec;
