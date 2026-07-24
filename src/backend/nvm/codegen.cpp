@@ -124,7 +124,10 @@ std::vector<uint8_t> NVMCodeGen::generate(ast::Program& program) {
     for (auto& [modName, mod] : program.modules) {
         if (modName == "stdio") continue;
         for (auto& f : mod.functions) {
-            if (f.isExported) generateFunction(f, modName + "_" + f.name, false);
+            if (!f.isExported) continue;
+            currentModulePrefix_ = modName;
+            generateFunction(f, modName + "_" + f.name, false);
+            currentModulePrefix_.clear();
         }
     }
 
@@ -359,6 +362,252 @@ void NVMCodeGen::generateStdioCall(const std::string& member, std::vector<ast::E
     emitPush(0);
 }
 
+void NVMCodeGen::emitStrlenInto(uint8_t strLocal, uint8_t outLenLocal) {
+    emitPush(0);
+    emitByte(STORE_REL);
+    emitByte(outLenLocal);
+
+    std::string loopLbl = generateLabel("strlen_loop");
+    std::string endLbl = generateLabel("strlen_end");
+    addLabel(loopLbl);
+
+    emitByte(LOAD_REL);
+    emitByte(strLocal);
+    emitByte(LOAD_REL);
+    emitByte(outLenLocal);
+    emitByte(ADD);
+    emitByte(LOAD_HEAP);
+    emitPush(24);
+    emitByte(SHR);
+    emitPush(0xFF);
+    emitByte(AND);
+    emitByte(JZ);
+    emitJumpRef(endLbl);
+
+    emitByte(LOAD_REL);
+    emitByte(outLenLocal);
+    emitPush(1);
+    emitByte(ADD);
+    emitByte(STORE_REL);
+    emitByte(outLenLocal);
+    emitByte(JMP);
+    emitJumpRef(loopLbl);
+
+    addLabel(endLbl);
+}
+
+void NVMCodeGen::emitCopyBytes(uint8_t srcLocal, uint8_t destLocal, uint8_t destOffsetLocal, uint8_t lenLocal) {
+    uint8_t iLocal = nextLocal_++;
+    emitPush(0);
+    emitByte(STORE_REL);
+    emitByte(iLocal);
+
+    std::string loopLbl = generateLabel("copy_loop");
+    std::string endLbl = generateLabel("copy_end");
+    addLabel(loopLbl);
+
+    emitByte(LOAD_REL);
+    emitByte(iLocal);
+    emitByte(LOAD_REL);
+    emitByte(lenLocal);
+    emitByte(LT);
+    emitByte(JZ);
+    emitJumpRef(endLbl);
+
+    emitByte(LOAD_REL);
+    emitByte(destLocal);
+    emitByte(LOAD_REL);
+    emitByte(destOffsetLocal);
+    emitByte(ADD);
+    emitByte(LOAD_REL);
+    emitByte(iLocal);
+    emitByte(ADD);
+
+    emitByte(LOAD_REL);
+    emitByte(srcLocal);
+    emitByte(LOAD_REL);
+    emitByte(iLocal);
+    emitByte(ADD);
+    emitByte(LOAD_HEAP);
+    emitPush(24);
+    emitByte(SHR);
+    emitPush(0xFF);
+    emitByte(AND);
+
+    emitByte(STORE_HEAP);
+
+    emitByte(LOAD_REL);
+    emitByte(iLocal);
+    emitPush(1);
+    emitByte(ADD);
+    emitByte(STORE_REL);
+    emitByte(iLocal);
+    emitByte(JMP);
+    emitJumpRef(loopLbl);
+
+    addLabel(endLbl);
+}
+
+void NVMCodeGen::generateStringCall(const std::string& member, std::vector<ast::Expression>& args) {
+    if (member == "len") {
+        generateExpression(args[0]);
+        uint8_t sLocal = nextLocal_++;
+        emitByte(STORE_REL);
+        emitByte(sLocal);
+
+        uint8_t lenLocal = nextLocal_++;
+        emitStrlenInto(sLocal, lenLocal);
+
+        emitByte(LOAD_REL);
+        emitByte(lenLocal);
+        return;
+    }
+    if (member == "compare") {
+        generateExpression(args[0]);
+        uint8_t aLocal = nextLocal_++;
+        emitByte(STORE_REL);
+        emitByte(aLocal);
+        generateExpression(args[1]);
+        uint8_t bLocal = nextLocal_++;
+        emitByte(STORE_REL);
+        emitByte(bLocal);
+
+        uint8_t iLocal = nextLocal_++;
+        emitPush(0);
+        emitByte(STORE_REL);
+        emitByte(iLocal);
+        uint8_t chALocal = nextLocal_++;
+        uint8_t chBLocal = nextLocal_++;
+
+        std::string loopLbl = generateLabel("strcmp_loop");
+        std::string diffLbl = generateLabel("strcmp_diff");
+        std::string eqLbl = generateLabel("strcmp_eq");
+        std::string doneLbl = generateLabel("strcmp_done");
+        addLabel(loopLbl);
+
+        emitByte(LOAD_REL);
+        emitByte(aLocal);
+        emitByte(LOAD_REL);
+        emitByte(iLocal);
+        emitByte(ADD);
+        emitByte(LOAD_HEAP);
+        emitPush(24);
+        emitByte(SHR);
+        emitPush(0xFF);
+        emitByte(AND);
+        emitByte(STORE_REL);
+        emitByte(chALocal);
+
+        emitByte(LOAD_REL);
+        emitByte(bLocal);
+        emitByte(LOAD_REL);
+        emitByte(iLocal);
+        emitByte(ADD);
+        emitByte(LOAD_HEAP);
+        emitPush(24);
+        emitByte(SHR);
+        emitPush(0xFF);
+        emitByte(AND);
+        emitByte(STORE_REL);
+        emitByte(chBLocal);
+
+        emitByte(LOAD_REL);
+        emitByte(chALocal);
+        emitByte(LOAD_REL);
+        emitByte(chBLocal);
+        emitByte(NEQ);
+        emitByte(JNZ);
+        emitJumpRef(diffLbl);
+
+        emitByte(LOAD_REL);
+        emitByte(chALocal);
+        emitByte(JZ);
+        emitJumpRef(eqLbl);
+
+        emitByte(LOAD_REL);
+        emitByte(iLocal);
+        emitPush(1);
+        emitByte(ADD);
+        emitByte(STORE_REL);
+        emitByte(iLocal);
+        emitByte(JMP);
+        emitJumpRef(loopLbl);
+
+        addLabel(diffLbl);
+        emitByte(LOAD_REL);
+        emitByte(chALocal);
+        emitByte(LOAD_REL);
+        emitByte(chBLocal);
+        emitByte(CMP);
+        emitByte(JMP);
+        emitJumpRef(doneLbl);
+
+        addLabel(eqLbl);
+        emitPush(0);
+        emitByte(JMP);
+        emitJumpRef(doneLbl);
+
+        addLabel(doneLbl);
+        return;
+    }
+    if (member == "concat") {
+        needsHeapAlloc_ = true;
+        generateExpression(args[0]);
+        uint8_t s1Local = nextLocal_++;
+        emitByte(STORE_REL);
+        emitByte(s1Local);
+        generateExpression(args[1]);
+        uint8_t s2Local = nextLocal_++;
+        emitByte(STORE_REL);
+        emitByte(s2Local);
+
+        uint8_t len1Local = nextLocal_++;
+        emitStrlenInto(s1Local, len1Local);
+        uint8_t len2Local = nextLocal_++;
+        emitStrlenInto(s2Local, len2Local);
+
+        emitByte(LOAD_REL);
+        emitByte(len1Local);
+        emitByte(LOAD_REL);
+        emitByte(len2Local);
+        emitByte(ADD);
+        emitPush(1 + 3);
+        emitByte(ADD);
+        emitByte(CALL);
+        emitJumpRef("func___heap_alloc");
+        emitByte(POP);
+        emitByte(LOAD);
+        emitByte(255);
+
+        uint8_t bufLocal = nextLocal_++;
+        emitByte(STORE_REL);
+        emitByte(bufLocal);
+
+        uint8_t zeroLocal = nextLocal_++;
+        emitPush(0);
+        emitByte(STORE_REL);
+        emitByte(zeroLocal);
+        emitCopyBytes(s1Local, bufLocal, zeroLocal, len1Local);
+        emitCopyBytes(s2Local, bufLocal, len1Local, len2Local);
+
+        emitByte(LOAD_REL);
+        emitByte(bufLocal);
+        emitByte(LOAD_REL);
+        emitByte(len1Local);
+        emitByte(ADD);
+        emitByte(LOAD_REL);
+        emitByte(len2Local);
+        emitByte(ADD);
+        emitPush(0);
+        emitByte(STORE_HEAP);
+
+        emitByte(LOAD_REL);
+        emitByte(bufLocal);
+        return;
+    }
+    emitPush(0);
+}
+
 void NVMCodeGen::generateNovariaRemove(ast::Expression& filenameExpr) {
     generateExpression(filenameExpr);
     uint8_t baseLocal = nextLocal_++;
@@ -470,12 +719,27 @@ void NVMCodeGen::generateNovariaCall(const std::string& member, std::vector<ast:
 }
 
 void NVMCodeGen::generateCall(const std::string& name, std::vector<ast::Expression>& args) {
+    if (currentModulePrefix_ == "string" && (name == "len" || name == "compare" || name == "concat")) {
+        generateStringCall(name, args);
+        return;
+    }
+
+    std::string label = name;
+    std::string sigKey = name;
+    if (!currentModulePrefix_.empty() && vars_.find(name) == vars_.end()) {
+        std::string qualified = currentModulePrefix_ + "." + name;
+        if (checker_.functions().count(qualified)) {
+            label = currentModulePrefix_ + "_" + name;
+            sigKey = qualified;
+        }
+    }
+
     for (auto it = args.rbegin(); it != args.rend(); ++it) generateExpression(*it);
     emitByte(CALL);
-    emitJumpRef("func_" + name);
+    emitJumpRef("func_" + label);
     for (size_t i = 0; i < args.size(); i++) emitByte(POP);
 
-    auto sigIt = checker_.functions().find(name);
+    auto sigIt = checker_.functions().find(sigKey);
     bool isVoid = sigIt == checker_.functions().end() || sigIt->second.returnType.kind == TypeKind::Void;
     if (!isVoid) {
         emitByte(LOAD);
@@ -492,6 +756,10 @@ void NVMCodeGen::generateMethodCall(ast::MethodCallExpr& expr) {
 
     if (object == "stdio") {
         generateStdioCall(member, args);
+        return;
+    }
+    if (object == "string" && (member == "len" || member == "compare" || member == "concat")) {
+        generateStringCall(member, args);
         return;
     }
     if (object == "novaria") {

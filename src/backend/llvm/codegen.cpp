@@ -580,6 +580,39 @@ struct Codegen::Impl {
         return TypedValue{llvm::ConstantInt::get(i64Ty, 0), Type{TypeKind::Unknown}};
     }
 
+    TypedValue genStringCall(const std::string& member, std::vector<ast::Expression>& args) {
+        auto rt = [&](const std::string& name, llvm::Type* retTy, std::vector<llvm::Type*> paramTys,
+                      std::vector<llvm::Value*> callArgs) {
+            auto* fnTy = llvm::FunctionType::get(retTy, paramTys, false);
+            return builder.CreateCall(getRtFn(name, fnTy), callArgs);
+        };
+
+        if (member == "len") {
+            auto* call = rt("agn_rt_strlen", i64Ty, {ptrTy}, {genExpr(args[0]).value});
+            return TypedValue{call, Type{TypeKind::I64}};
+        }
+        if (member == "compare") {
+            auto* call = rt("agn_rt_strcmp", i64Ty, {ptrTy, ptrTy},
+                             {genExpr(args[0]).value, genExpr(args[1]).value});
+            return TypedValue{call, Type{TypeKind::I64}};
+        }
+        if (member == "concat") {
+            auto* s1 = genExpr(args[0]).value;
+            auto* s2 = genExpr(args[1]).value;
+            auto* len1 = rt("agn_rt_strlen", i64Ty, {ptrTy}, {s1});
+            auto* len2 = rt("agn_rt_strlen", i64Ty, {ptrTy}, {s2});
+            auto* total = builder.CreateAdd(builder.CreateAdd(len1, len2), llvm::ConstantInt::get(i64Ty, 1));
+            auto* buf = callRtAlloc(total);
+            rt("agn_rt_memcpy", voidTy, {ptrTy, ptrTy, i64Ty}, {buf, s1, len1});
+            auto* tail = builder.CreateGEP(i8Ty, buf, {len1});
+            rt("agn_rt_memcpy", voidTy, {ptrTy, ptrTy, i64Ty}, {tail, s2, len2});
+            auto* end = builder.CreateGEP(i8Ty, buf, {builder.CreateAdd(len1, len2)});
+            builder.CreateStore(llvm::ConstantInt::get(i8Ty, 0), end);
+            return TypedValue{buf, Type{TypeKind::String}};
+        }
+        return TypedValue{llvm::ConstantInt::get(i64Ty, 0), Type{TypeKind::Unknown}};
+    }
+
     void appendToBuffer(llvm::Value* buf, llvm::Value* posAlloca, llvm::Value* src, llvm::Value* len) {
         auto* pos = builder.CreateLoad(i64Ty, posAlloca);
         auto* dest = builder.CreateGEP(i8Ty, buf, {pos});
@@ -829,6 +862,10 @@ struct Codegen::Impl {
     }
 
     TypedValue genCall(const std::string& name, std::vector<ast::Expression>& argExprs) {
+        if (currentModulePrefix == "string" && (name == "len" || name == "compare" || name == "concat")) {
+            return genStringCall(name, argExprs);
+        }
+
         std::string resolvedName = name;
         if (!currentModulePrefix.empty() && locals.find(name) == locals.end()) {
             std::string qualified = currentModulePrefix + "." + name;
@@ -865,6 +902,10 @@ struct Codegen::Impl {
 
     TypedValue genMethodCall(ast::MethodCallExpr& expr) {
         if (expr.object == "stdio") return genStdioCall(expr.member, expr.args);
+        if (expr.object == "string" &&
+            (expr.member == "len" || expr.member == "compare" || expr.member == "concat")) {
+            return genStringCall(expr.member, expr.args);
+        }
 
         if (expr.kind == ast::MethodCallKind::StructField) {
             auto& local = locals.at(expr.object);

@@ -30,6 +30,7 @@ private:
     void generateStatement(agn::ast::Statement& stmt);
     void generateExpression(agn::ast::Expression& expr);
     void generateStdioCall(const std::string& member, std::vector<agn::ast::Expression>& args);
+    void generateStringCall(const std::string& member, std::vector<agn::ast::Expression>& args);
     void generateNovariaCall(const std::string& member, std::vector<agn::ast::Expression>& args);
     void generateNovariaRemove(agn::ast::Expression& filenameExpr);
     void generateMethodCall(agn::ast::MethodCallExpr& expr);
@@ -39,6 +40,8 @@ private:
     void writeExprAsString(agn::ast::Expression& expr);
     void writeHeapString(const std::string& text);
     void storeHeapI32();
+    void emitStrlenInto(uint8_t strLocal, uint8_t outLenLocal);
+    void emitCopyBytes(uint8_t srcLocal, uint8_t destLocal, uint8_t destOffsetLocal, uint8_t lenLocal);
     int fieldOffset(const std::string& structName, const std::string& field);
     void emitHeapAllocHelper();
     void emitPrintIntHelper();
@@ -62,6 +65,7 @@ private:
     size_t enterOperandPos_ = 0;
     bool inMain_ = false;
     std::string currentFunction_;
+    std::string currentModulePrefix_;
     int labelCounter_ = 0;
     bool needsHeapAlloc_ = false;
     bool needsPrintInt_ = false;

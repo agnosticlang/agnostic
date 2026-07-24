@@ -22,6 +22,19 @@ extern "C" unsigned long agn_rt_strlen(const char* s) {
     return n;
 }
 
+extern "C" long agn_rt_strcmp(const char* a, const char* b) {
+    unsigned long i = 0;
+    while (a[i] != '\0' && a[i] == b[i]) i++;
+    unsigned char ca = static_cast<unsigned char>(a[i]);
+    unsigned char cb = static_cast<unsigned char>(b[i]);
+    if (ca == cb) return 0;
+    return ca < cb ? -1 : 1;
+}
+
+extern "C" void agn_rt_memcpy(char* dest, const char* src, unsigned long len) {
+    for (unsigned long i = 0; i < len; i++) dest[i] = src[i];
+}
+
 extern "C" unsigned long agn_rt_format_int(char* buf, long value, long width, long padZero) {
     char tmp[24];
     int pos = 24;
