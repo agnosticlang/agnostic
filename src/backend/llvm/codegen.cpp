@@ -75,6 +75,7 @@ struct Codegen::Impl {
     Type curReturnType{TypeKind::Void};
     bool curIsMain = false;
     std::string currentModulePrefix;
+    std::vector<std::pair<llvm::BasicBlock*, llvm::BasicBlock*>> loopStack; // {continueTarget, breakTarget}
     std::unordered_map<std::string, LocalVar> locals;
     std::vector<llvm::Value*> arcTrackedClosures;
     std::unordered_set<std::string> capturedInCurrentFn;
@@ -1060,10 +1061,20 @@ struct Codegen::Impl {
             }
 
             builder.SetInsertPoint(bodyBB);
+            loopStack.push_back({condBB, endBB});
             for (auto& s : n->body) genStatement(s);
+            loopStack.pop_back();
             if (!currentBlockTerminated()) builder.CreateBr(condBB);
 
             builder.SetInsertPoint(endBB);
+            return;
+        }
+        if (std::get_if<ast::BreakStmt>(&stmt.node)) {
+            builder.CreateBr(loopStack.back().second);
+            return;
+        }
+        if (std::get_if<ast::ContinueStmt>(&stmt.node)) {
+            builder.CreateBr(loopStack.back().first);
             return;
         }
         if (auto* n = std::get_if<ast::ReturnStmt>(&stmt.node)) {

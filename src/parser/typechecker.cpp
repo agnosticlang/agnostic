@@ -336,7 +336,17 @@ void TypeChecker::checkStatement(ast::Statement& stmt) {
     }
     if (auto* n = std::get_if<ast::ForStmt>(&stmt.node)) {
         if (n->condition) checkExpression(*n->condition);
+        loopDepth_++;
         for (auto& s : n->body) checkStatement(s);
+        loopDepth_--;
+        return;
+    }
+    if (std::get_if<ast::BreakStmt>(&stmt.node)) {
+        if (loopDepth_ == 0) addError("'break' outside of a loop");
+        return;
+    }
+    if (std::get_if<ast::ContinueStmt>(&stmt.node)) {
+        if (loopDepth_ == 0) addError("'continue' outside of a loop");
         return;
     }
     if (auto* n = std::get_if<ast::ReturnStmt>(&stmt.node)) {
@@ -377,7 +387,10 @@ Type TypeChecker::checkFunctionLiteral(ast::FunctionLiteralExpr& lit) {
 
     Type retType = resolveType(lit.returnType);
     returnTypeStack_.push_back(retType);
+    int savedLoopDepth = loopDepth_;
+    loopDepth_ = 0;
     for (auto& stmt : lit.body) checkStatement(stmt);
+    loopDepth_ = savedLoopDepth;
     returnTypeStack_.pop_back();
 
     scopeStack_.pop_back();

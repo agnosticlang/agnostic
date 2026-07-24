@@ -903,10 +903,22 @@ void NVMCodeGen::generateStatement(ast::Statement& stmt) {
             emitByte(JZ);
             emitJumpRef(endLbl);
         }
+        loopLabelStack_.push_back({startLbl, endLbl});
         for (auto& s : n->body) generateStatement(s);
+        loopLabelStack_.pop_back();
         emitByte(JMP);
         emitJumpRef(startLbl);
         addLabel(endLbl);
+        return;
+    }
+    if (std::get_if<ast::BreakStmt>(&stmt.node)) {
+        emitByte(JMP);
+        emitJumpRef(loopLabelStack_.back().second);
+        return;
+    }
+    if (std::get_if<ast::ContinueStmt>(&stmt.node)) {
+        emitByte(JMP);
+        emitJumpRef(loopLabelStack_.back().first);
         return;
     }
     if (auto* n = std::get_if<ast::ReturnStmt>(&stmt.node)) {

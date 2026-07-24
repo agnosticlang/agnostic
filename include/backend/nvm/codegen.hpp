@@ -66,6 +66,7 @@ private:
     bool inMain_ = false;
     std::string currentFunction_;
     std::string currentModulePrefix_;
+    std::vector<std::pair<std::string, std::string>> loopLabelStack_; // {continueLabel, breakLabel}
     int labelCounter_ = 0;
     bool needsHeapAlloc_ = false;
     bool needsPrintInt_ = false;

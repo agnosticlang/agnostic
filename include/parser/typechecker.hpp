@@ -88,6 +88,7 @@ private:
     std::unordered_map<std::string, FunctionSignature> functions_;
     std::vector<ScopeFrame> scopeStack_;
     std::vector<Type> returnTypeStack_;
+    int loopDepth_ = 0;
     std::vector<TypeError> errors_;
     std::string currentFunction_;
     std::string currentModulePrefix_;

@@ -166,11 +166,15 @@ struct InlineAsmStmt { std::vector<AsmPart> parts; };
 
 struct ComptimeStmt { std::vector<Statement> body; };
 
+struct BreakStmt {};
+struct ContinueStmt {};
+
 struct Statement {
     std::variant<
         VarDeclStmt, ArrayDeclStmt, AssignmentStmt, ArrayAssignmentStmt,
         PointerAssignmentStmt, FieldAssignmentStmt, IfStmt, ForStmt,
-        ReturnStmt, ExpressionStmt, InlineAsmStmt, ComptimeStmt> node;
+        ReturnStmt, ExpressionStmt, InlineAsmStmt, ComptimeStmt,
+        BreakStmt, ContinueStmt> node;
 };
 
 struct Function {

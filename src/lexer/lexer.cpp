@@ -72,6 +72,7 @@ Token Lexer::readIdentifier() {
         {"while", TokenKind::For},       {"loop", TokenKind::For},
         {"return", TokenKind::Return},   {"asm", TokenKind::Asm},
         {"struct", TokenKind::Struct},   {"comptime", TokenKind::Comptime},
+        {"break", TokenKind::Break},     {"continue", TokenKind::Continue},
     };
 
     std::string id;
@@ -124,6 +125,8 @@ const char* tokenKindName(TokenKind kind) {
         case TokenKind::Asm: return "asm";
         case TokenKind::Struct: return "struct";
         case TokenKind::Comptime: return "comptime";
+        case TokenKind::Break: return "break";
+        case TokenKind::Continue: return "continue";
         case TokenKind::Identifier: return "identifier";
         case TokenKind::Number: return "number";
         case TokenKind::String: return "string";

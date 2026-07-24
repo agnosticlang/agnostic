@@ -254,6 +254,8 @@ ast::Statement Parser::parseStatement() {
         case TokenKind::Return: return parseReturn();
         case TokenKind::Asm: return parseAsm();
         case TokenKind::Comptime: return parseComptime();
+        case TokenKind::Break: advance(); return ast::Statement{ast::BreakStmt{}};
+        case TokenKind::Continue: advance(); return ast::Statement{ast::ContinueStmt{}};
         case TokenKind::Star: {
             size_t checkPos = position_ + 1;
             while (checkPos < tokens_.size()) {
