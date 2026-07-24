@@ -97,7 +97,7 @@ void loadModules(agn::ast::Program& program, const fs::path& sourceDir, const fs
 void printUsage(const char* argv0) {
     std::cerr << "Usage: " << argv0 << " <source.agn> [options]\n"
               << "  --backend=llvm|nvm|gcc   select codegen backend (default: llvm)\n"
-              << "  --mem=arc|manual|orc     select memory management mode (default: arc)\n"
+              << "  --mem=arc|manual|orc     select memory management mode (default: arc; orc allocations don't survive their function)\n"
               << "  --target-os=linux|freebsd|windows|hurd  (default: linux, only linux implemented)\n"
               << "  --output=<path>          output executable path\n";
 }

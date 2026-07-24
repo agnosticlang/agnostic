@@ -252,6 +252,18 @@ struct Codegen::Impl {
         builder.CreateCall(getRtFn("agn_rt_release", fnTy), {ptr});
     }
 
+    void callOrcEnterRegion() {
+        if (mode != MemMode::Orc) return;
+        auto* fnTy = llvm::FunctionType::get(voidTy, {}, false);
+        builder.CreateCall(getRtFn("agn_rt_orc_enter", fnTy), {});
+    }
+
+    void callOrcExitRegion() {
+        if (mode != MemMode::Orc) return;
+        auto* fnTy = llvm::FunctionType::get(voidTy, {}, false);
+        builder.CreateCall(getRtFn("agn_rt_orc_exit", fnTy), {});
+    }
+
     llvm::Value* callRtAlloc(llvm::Value* size) {
         auto* fnTy = llvm::FunctionType::get(ptrTy, {i64Ty}, false);
         return builder.CreateCall(getRtFn("agn_rt_alloc", fnTy), {size});
@@ -266,6 +278,7 @@ struct Codegen::Impl {
 
     void emitDefaultReturn() {
         releaseArcLocals();
+        callOrcExitRegion();
         if (curIsMain) builder.CreateRet(llvm::ConstantInt::get(i32Ty, 0));
         else if (curReturnType.kind == TypeKind::Void) builder.CreateRetVoid();
         else builder.CreateRet(llvm::Constant::getNullValue(llvmType(curReturnType)));
@@ -400,6 +413,7 @@ struct Codegen::Impl {
 
         auto* entry = llvm::BasicBlock::Create(ctx, "entry", fn);
         builder.SetInsertPoint(entry);
+        callOrcEnterRegion();
 
         auto argIt = fn->arg_begin();
         if (isMain) {
@@ -476,6 +490,7 @@ struct Codegen::Impl {
 
         auto* entry = llvm::BasicBlock::Create(ctx, "entry", fn);
         builder.SetInsertPoint(entry);
+        callOrcEnterRegion();
 
         auto argIt = fn->arg_begin();
         llvm::Argument* envArg = &*argIt++;
@@ -1086,10 +1101,12 @@ struct Codegen::Impl {
                 auto* toRet = coerceValue(val, curReturnType);
                 if (curReturnType.kind == TypeKind::Function) callRtRetain(toRet);
                 releaseArcLocals();
+                callOrcExitRegion();
                 if (curIsMain) builder.CreateRet(builder.CreateTrunc(toRet, i32Ty));
                 else builder.CreateRet(toRet);
             } else {
                 releaseArcLocals();
+                callOrcExitRegion();
                 if (curIsMain) builder.CreateRet(llvm::ConstantInt::get(i32Ty, 0));
                 else builder.CreateRetVoid();
             }
