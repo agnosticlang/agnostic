@@ -32,7 +32,7 @@ private:
     void generateStdioCall(const std::string& member, std::vector<agn::ast::Expression>& args);
     void generateNovariaCall(const std::string& member, std::vector<agn::ast::Expression>& args);
     void generateNovariaRemove(agn::ast::Expression& filenameExpr);
-    void generateMethodCall(const std::string& object, const std::string& member, std::vector<agn::ast::Expression>& args);
+    void generateMethodCall(agn::ast::MethodCallExpr& expr);
     void generateCall(const std::string& name, std::vector<agn::ast::Expression>& args);
     void generateStructLiteral(agn::ast::StructLiteralExpr& lit);
     void materializeString(const std::string& text);

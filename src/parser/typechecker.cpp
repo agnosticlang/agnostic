@@ -489,6 +489,8 @@ Type TypeChecker::checkExpression(ast::Expression& expr) {
             auto fieldIt = std::find_if(fields.begin(), fields.end(),
                                          [&](auto& f) { return f.first == n->member; });
             if (fieldIt != fields.end() && fieldIt->second.kind == TypeKind::Function) {
+                n->kind = ast::MethodCallKind::StructField;
+                n->resolvedStructName = localType->structName;
                 auto& fnType = fieldIt->second;
                 if (n->args.size() != fnType.paramTypes.size()) {
                     addError("field '" + n->member + "' expects " + std::to_string(fnType.paramTypes.size()) +
@@ -506,8 +508,13 @@ Type TypeChecker::checkExpression(ast::Expression& expr) {
 
         std::string key;
         bool isMethod = localType && localType->kind == TypeKind::Struct;
-        if (isMethod) key = localType->structName + "." + n->member;
-        else key = n->object + "." + n->member;
+        if (isMethod) {
+            n->kind = ast::MethodCallKind::Method;
+            n->resolvedStructName = localType->structName;
+            key = localType->structName + "." + n->member;
+        } else {
+            key = n->object + "." + n->member;
+        }
 
         auto it = functions_.find(key);
         if (it == functions_.end()) {

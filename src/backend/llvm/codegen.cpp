@@ -749,7 +749,7 @@ struct Codegen::Impl {
             return genCall(n->function, n->args);
         }
         if (auto* n = std::get_if<ast::MethodCallExpr>(&expr.node)) {
-            return genMethodCall(n->object, n->member, n->args);
+            return genMethodCall(*n);
         }
         if (auto* n = std::get_if<ast::ArrayAccessExpr>(&expr.node)) {
             auto& lv = locals.at(n->name);
@@ -861,43 +861,43 @@ struct Codegen::Impl {
         return TypedValue{call, *lv.type.returnType};
     }
 
-    TypedValue genMethodCall(const std::string& object, const std::string& member, std::vector<ast::Expression>& argExprs) {
-        if (object == "stdio") return genStdioCall(member, argExprs);
+    TypedValue genMethodCall(ast::MethodCallExpr& expr) {
+        if (expr.object == "stdio") return genStdioCall(expr.member, expr.args);
 
-        auto localIt = locals.find(object);
-        if (localIt != locals.end() && localIt->second.type.kind == TypeKind::Struct) {
-            auto& fields = checker.structs().at(localIt->second.type.structName);
-            for (size_t i = 0; i < fields.size(); i++) {
-                if (fields[i].first != member || fields[i].second.kind != TypeKind::Function) continue;
-                Type fieldType = fields[i].second;
-                auto* structTy = structTypes.at(localIt->second.type.structName);
-                auto* fieldPtr = builder.CreateStructGEP(structTy, localIt->second.addr, unsigned(i));
-                auto* closurePtr = builder.CreateLoad(ptrTy, fieldPtr);
-                auto* codePtr = builder.CreateLoad(ptrTy, closurePtr);
-                std::vector<llvm::Type*> llvmParams{ptrTy};
-                for (auto& pt : fieldType.paramTypes) llvmParams.push_back(llvmType(pt));
-                auto* fnType = llvm::FunctionType::get(llvmType(*fieldType.returnType), llvmParams, false);
-                std::vector<llvm::Value*> args{closurePtr};
-                for (size_t a = 0; a < argExprs.size(); a++) {
-                    auto v = genExpr(argExprs[a]);
-                    args.push_back(coerceValue(v, fieldType.paramTypes[a]));
-                }
-                auto* call = builder.CreateCall(fnType, codePtr, args);
-                return TypedValue{call, *fieldType.returnType};
+        if (expr.kind == ast::MethodCallKind::StructField) {
+            auto& local = locals.at(expr.object);
+            auto& fields = checker.structs().at(expr.resolvedStructName);
+            auto fieldIt = std::find_if(fields.begin(), fields.end(),
+                                         [&](auto& f) { return f.first == expr.member; });
+            Type fieldType = fieldIt->second;
+            auto* structTy = structTypes.at(expr.resolvedStructName);
+            unsigned index = unsigned(fieldIt - fields.begin());
+            auto* fieldPtr = builder.CreateStructGEP(structTy, local.addr, index);
+            auto* closurePtr = builder.CreateLoad(ptrTy, fieldPtr);
+            auto* codePtr = builder.CreateLoad(ptrTy, closurePtr);
+            std::vector<llvm::Type*> llvmParams{ptrTy};
+            for (auto& pt : fieldType.paramTypes) llvmParams.push_back(llvmType(pt));
+            auto* fnType = llvm::FunctionType::get(llvmType(*fieldType.returnType), llvmParams, false);
+            std::vector<llvm::Value*> args{closurePtr};
+            for (size_t a = 0; a < expr.args.size(); a++) {
+                auto v = genExpr(expr.args[a]);
+                args.push_back(coerceValue(v, fieldType.paramTypes[a]));
             }
+            auto* call = builder.CreateCall(fnType, codePtr, args);
+            return TypedValue{call, *fieldType.returnType};
         }
 
-        bool isMethod = localIt != locals.end() && localIt->second.type.kind == TypeKind::Struct;
-        std::string key = isMethod ? localIt->second.type.structName + "." + member : object + "." + member;
+        bool isMethod = expr.kind == ast::MethodCallKind::Method;
+        std::string key = isMethod ? expr.resolvedStructName + "." + expr.member : expr.object + "." + expr.member;
 
         auto& sig = checker.functions().at(key);
         llvm::Function* fn = functionTable.at(key);
         std::vector<llvm::Value*> args;
-        if (isMethod) args.push_back(localIt->second.addr);
+        if (isMethod) args.push_back(locals.at(expr.object).addr);
         else args.push_back(llvm::ConstantPointerNull::get(llvm::cast<llvm::PointerType>(ptrTy)));
 
-        for (size_t i = 0; i < argExprs.size(); i++) {
-            auto v = genExpr(argExprs[i]);
+        for (size_t i = 0; i < expr.args.size(); i++) {
+            auto v = genExpr(expr.args[i]);
             args.push_back(coerceValue(v, sig.params[i].second));
         }
         auto* call = builder.CreateCall(fn, args);

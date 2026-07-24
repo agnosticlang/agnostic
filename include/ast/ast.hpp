@@ -71,10 +71,15 @@ struct CallExpr {
     std::vector<Expression> args;
 };
 
+enum class MethodCallKind { ModuleFunction, Method, StructField };
+
 struct MethodCallExpr {
     std::string object;
     std::string member;
     std::vector<Expression> args;
+
+    MethodCallKind kind = MethodCallKind::ModuleFunction;
+    std::string resolvedStructName;
 };
 
 struct ArrayAccessExpr {

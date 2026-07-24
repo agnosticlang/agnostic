@@ -809,7 +809,11 @@ ast::Expression Parser::parsePrimary() {
                         if (current().kind == TokenKind::Comma) advance();
                     }
                     expect(TokenKind::RightParen);
-                    return ast::Expression{ast::MethodCallExpr{name, member, std::move(args)}};
+                    ast::MethodCallExpr call;
+                    call.object = name;
+                    call.member = member;
+                    call.args = std::move(args);
+                    return ast::Expression{std::move(call)};
                 }
                 return ast::Expression{ast::FieldAccessExpr{
                     box(ast::Expression{ast::IdentifierExpr{name}}), member}};

@@ -485,8 +485,11 @@ void NVMCodeGen::generateCall(const std::string& name, std::vector<ast::Expressi
     }
 }
 
-void NVMCodeGen::generateMethodCall(const std::string& object, const std::string& member,
-                                    std::vector<ast::Expression>& args) {
+void NVMCodeGen::generateMethodCall(ast::MethodCallExpr& expr) {
+    const std::string& object = expr.object;
+    const std::string& member = expr.member;
+    std::vector<ast::Expression>& args = expr.args;
+
     if (object == "stdio") {
         generateStdioCall(member, args);
         return;
@@ -496,21 +499,14 @@ void NVMCodeGen::generateMethodCall(const std::string& object, const std::string
         return;
     }
 
-    auto it = vars_.find(object);
-    bool isMethod = it != vars_.end() && !it->second.structType.empty();
-
-    if (isMethod) {
-        auto structIt = checker_.structs().find(it->second.structType);
-        if (structIt != checker_.structs().end()) {
-            for (auto& field : structIt->second) {
-                if (field.first == member && field.second.kind == TypeKind::Function) {
-                    std::fprintf(stderr, "error: calling a function-valued struct field ('%s.%s') is not supported by the nvm backend\n",
-                                 it->second.structType.c_str(), member.c_str());
-                    std::exit(1);
-                }
-            }
-        }
+    if (expr.kind == ast::MethodCallKind::StructField) {
+        std::fprintf(stderr, "error: calling a function-valued struct field ('%s.%s') is not supported by the nvm backend\n",
+                     expr.resolvedStructName.c_str(), member.c_str());
+        std::exit(1);
     }
+
+    bool isMethod = expr.kind == ast::MethodCallKind::Method;
+    auto it = vars_.find(object);
 
     for (auto argIt = args.rbegin(); argIt != args.rend(); ++argIt) generateExpression(*argIt);
 
@@ -518,7 +514,7 @@ void NVMCodeGen::generateMethodCall(const std::string& object, const std::string
     if (isMethod) {
         emitByte(it->second.isArg ? LOAD_ARG : LOAD_REL);
         emitByte(it->second.index);
-        key = it->second.structType + "_" + member;
+        key = expr.resolvedStructName + "_" + member;
     } else {
         key = object + "_" + member;
     }
@@ -528,7 +524,7 @@ void NVMCodeGen::generateMethodCall(const std::string& object, const std::string
     size_t argCount = args.size() + (isMethod ? 1 : 0);
     for (size_t i = 0; i < argCount; i++) emitByte(POP);
 
-    std::string sigKey = isMethod ? (it->second.structType + "." + member) : (object + "." + member);
+    std::string sigKey = isMethod ? (expr.resolvedStructName + "." + member) : (object + "." + member);
     auto sigIt = checker_.functions().find(sigKey);
     bool isVoid = sigIt == checker_.functions().end() || sigIt->second.returnType.kind == TypeKind::Void;
     if (!isVoid) {
@@ -780,7 +776,7 @@ void NVMCodeGen::generateExpression(ast::Expression& expr) {
         return;
     }
     if (auto* n = std::get_if<ast::MethodCallExpr>(&expr.node)) {
-        generateMethodCall(n->object, n->member, n->args);
+        generateMethodCall(*n);
         return;
     }
     if (auto* n = std::get_if<ast::DerefExpr>(&expr.node)) {
