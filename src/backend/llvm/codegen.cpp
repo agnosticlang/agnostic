@@ -22,6 +22,8 @@
 #include <llvm/TargetParser/Host.h>
 #include <llvm/TargetParser/Triple.h>
 
+#include <cstdio>
+#include <cstdlib>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
@@ -820,9 +822,10 @@ struct Codegen::Impl {
             auto* loaded = builder.CreateLoad(llvmType(pointee), v.value);
             return TypedValue{loaded, pointee};
         }
-        if (auto* n = std::get_if<ast::EvalExpr>(&expr.node)) {
-            genExpr(*n->instruction);
-            return TypedValue{llvm::ConstantInt::get(i64Ty, 0), Type{TypeKind::Unknown}};
+        if (std::get_if<ast::EvalExpr>(&expr.node)) {
+            std::fprintf(stderr, "error: 'eval' is not supported by the llvm backend "
+                                  "(it only has meaning as an nvm inline-asm escape hatch)\n");
+            std::exit(1);
         }
         if (auto* n = std::get_if<ast::FieldAccessExpr>(&expr.node)) {
             auto* id = std::get_if<ast::IdentifierExpr>(&n->object->node);

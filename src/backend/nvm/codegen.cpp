@@ -1075,7 +1075,13 @@ void NVMCodeGen::generateExpression(ast::Expression& expr) {
         std::exit(1);
     }
     if (auto* n = std::get_if<ast::EvalExpr>(&expr.node)) {
-        if (auto* s = std::get_if<ast::StringExpr>(&n->instruction->node)) emitAsmInstruction(s->value);
+        auto* s = std::get_if<ast::StringExpr>(&n->instruction->node);
+        if (!s) {
+            std::fprintf(stderr, "error: 'eval' argument must be a string literal (in %s)\n",
+                         currentFunction_.c_str());
+            std::exit(1);
+        }
+        emitAsmInstruction(s->value);
         emitPush(0);
         return;
     }
