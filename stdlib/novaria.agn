@@ -1,176 +1,30 @@
 package novaria
 
-// NovariaOS System Library for Agnostic
-// Provides direct integration with NovariaOS syscalls and capabilities
-
-// File System Operations
-
-// Read a file from VFS
-// Returns: file size on success, -1 on error
-pub fn FileRead(filename int, buffer int, maxsize int) int {
-    // SYS_READ (0x02): filename_ptr, buffer_ptr, max_size
-    // Stack layout: buffer, maxsize, filename -> syscall
-    return 0
-}
-
-// Write data to a file
-// Returns: 0 on success, -1 on error
-pub fn FileWrite(filename int, data int, size int) int {
-    // SYS_WRITE (0x03): filename_ptr, data_ptr, size
-    return 0
-}
-
-// Create a new file
-// Returns: 0 on success, -1 on error
-pub fn FileCreate(filename int, data int, size int) int {
-    // SYS_CREATE (0x04): filename_ptr, data_ptr, size
-    return 0
-}
-
-// Delete a file
-// Returns: 0 on success, -1 on error
-pub fn FileDelete(filename int) int {
-    // SYS_DELETE (0x05): filename_ptr
-    return 0
-}
-
-// Process Management
-
-// Exit the current process with exit code
 pub fn Exit(code int) {
-    // SYS_EXIT (0x00): exit_code
     return
 }
 
-// Execute a program from file
-// Returns: PID on success, -1 on error
-pub fn Exec(filename int) int {
-    // SYS_EXEC (0x01): filename_ptr
-    return 0
+// read-only; no create/write syscall exists for disk files
+pub fn Open(filename string) int {
+    return -1
 }
 
-// Spawn a process with specific capabilities
-// Returns: PID on success, -1 on error
-pub fn CapSpawn(filename int, caps int, caps_count int) int {
-    // SYS_CAP_SPAWN (0x07): filename_ptr, caps_array_ptr, caps_count
-    return 0
+pub fn Read(fd int, bufferOffset int) int {
+    return -1
 }
 
-// Check if process has capability
-// Returns: 1 if has cap, 0 otherwise
-pub fn CapCheck(pid int, cap int) int {
-    // SYS_CAP_CHECK (0x06): pid, capability
-    return 0
+pub fn Write(fd int, bufferOffset int) int {
+    return -1
 }
 
-// Inter-Process Communication
-
-// Send a message to another process
-// Returns: 0 on success, -1 on error
-pub fn MsgSend(target_pid int, data int, size int) int {
-    // SYS_MSG_SEND (0x09): target_pid, data_ptr, size
-    return 0
-}
-
-// Receive a message (blocking)
-// Returns: number of bytes received, -1 on error
-pub fn MsgReceive(buffer int, maxsize int) int {
-    // SYS_MSG_RECEIVE (0x0A): buffer_ptr, max_size
-    return 0
-}
-
-// Hardware Access (requires CAP_DRV_ACCESS)
-
-// Read a byte from I/O port
-// Returns: byte value
-pub fn PortInByte(port int) int {
-    // SYS_PORT_IN_BYTE (0x0B): port_number
-    return 0
-}
-
-// Write a byte to I/O port
-pub fn PortOutByte(port int, value int) {
-    // SYS_PORT_OUT_BYTE (0x0C): port_number, value
+pub fn Remove(filename string) {
     return
 }
 
-// Console/VGA Operations
-
-// Print string to console using kprint
-pub fn Print(text int, color int) {
-    // Direct call to kprint via VFS or custom mechanism
-    // For now, implemented in compiler
+pub fn Exec(filename string) {
     return
 }
 
-// Clear the screen
-pub fn ClearScreen() {
-    // Call clearscreen function
-    return
-}
-
-// Set cursor position
-pub fn SetCursor(x int, y int) {
-    // Call terminal_set_cursor
-    return
-}
-
-// Memory Operations
-
-// Allocate memory block
-// Returns: pointer to allocated memory, 0 on failure
 pub fn MemAlloc(size int) int {
-    // Would need syscall extension for userspace malloc
     return 0
-}
-
-// Free allocated memory
-pub fn MemFree(ptr int) {
-    // Would need syscall extension for userspace free
-    return
-}
-
-// Capability Constants
-
-// Capability flags
-pub fn CAP_FS_READ() int {
-    return 1
-}
-
-pub fn CAP_FS_WRITE() int {
-    return 2
-}
-
-pub fn CAP_FS_CREATE() int {
-    return 4
-}
-
-pub fn CAP_FS_DELETE() int {
-    return 8
-}
-
-pub fn CAP_DRV_ACCESS() int {
-    return 16
-}
-
-pub fn CAP_CAPS_MGMT() int {
-    return 32
-}
-
-pub fn CAP_ALL() int {
-    return 65535
-}
-
-// Utility Functions
-
-// Get current process ID
-pub fn GetPID() int {
-    // Would need syscall extension
-    return 0
-}
-
-// Sleep/yield for scheduler
-pub fn Yield() {
-    // Simple NOP loop or future syscall
-    return
 }
