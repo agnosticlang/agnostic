@@ -1,0 +1,23 @@
+package main
+
+import "stdio"
+
+func main() {
+    var i int = 1
+    for i <= 30 {
+        if i % 15 == 0 {
+            stdio.PrintlnStr("FizzBuzz")
+        } else {
+            if i % 3 == 0 {
+                stdio.PrintlnStr("Fizz")
+            } else {
+                if i % 5 == 0 {
+                    stdio.PrintlnStr("Buzz")
+                } else {
+                    stdio.Println(i)
+                }
+            }
+        }
+        i = i + 1
+    }
+}

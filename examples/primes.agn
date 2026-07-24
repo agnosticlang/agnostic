@@ -1,0 +1,18 @@
+package main
+
+import "math"
+import "stdio"
+
+func main() {
+    var found int = 0
+    var n int = 2
+    for found < 10 {
+        if math.IsPrime(n) == 0 {
+            n = n + 1
+            continue
+        }
+        stdio.Println(n)
+        found = found + 1
+        n = n + 1
+    }
+}

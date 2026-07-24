@@ -1,0 +1,17 @@
+package main
+
+import "string"
+import "stdio"
+
+func main() {
+    var greeting string = string.concat("Hello, ", "Agnostic!")
+    stdio.PrintlnStr(greeting)
+    stdio.Println(string.len(greeting))
+
+    stdio.Println(string.compare("apple", "banana"))
+    stdio.Println(string.compare("banana", "apple"))
+    stdio.Println(string.compare("same", "same"))
+
+    stdio.Println(string.is_empty(""))
+    stdio.Println(string.is_empty(greeting))
+}
