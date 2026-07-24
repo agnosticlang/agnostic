@@ -1,0 +1,13 @@
+package main
+import "string"
+import "stdio"
+
+fn main() {
+    stdio.Println(string.len("hello"))
+    stdio.Println(string.compare("abc", "abc"))
+    stdio.Println(string.compare("abc", "abd"))
+    stdio.Println(string.compare("abd", "abc"))
+    stdio.PrintlnStr(string.concat("foo", "bar"))
+    stdio.Println(string.is_empty(""))
+    stdio.Println(string.is_empty("hi"))
+}

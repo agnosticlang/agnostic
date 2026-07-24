@@ -1,0 +1,20 @@
+package main
+import "math"
+import "stdio"
+
+fn main() {
+    stdio.Println(math.Max(3, 7))
+    stdio.Println(math.Min(3, 7))
+    stdio.Println(math.Pow(2, 10))
+    stdio.Println(math.Sqrt(81))
+    stdio.Println(math.GCD(12, 18))
+    stdio.Println(math.LCM(4, 6))
+    stdio.Println(math.Fact(5))
+    stdio.Println(math.IsEven(4))
+    stdio.Println(math.IsOdd(4))
+    stdio.Println(math.Clamp(15, 0, 10))
+    stdio.Println(math.SumRange(10))
+    stdio.Println(math.IsPrime(17))
+    stdio.Println(math.IsPrime(18))
+    stdio.Println(math.Fib(10))
+}
