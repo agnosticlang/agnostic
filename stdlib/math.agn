@@ -78,8 +78,6 @@ pub fn GCD(a int, b int) int {
 
 // Least Common Multiple
 // Note: Opery works with positive integers
-// LIMITATION: This function calls GCD internally, which may not work in current compiler
-// Workaround: Call GCD separately and calculate LCM manually: (a * b) / GCD(a, b)
 pub fn LCM(a int, b int) int {
     if a == 0 {
         return 0
@@ -87,21 +85,8 @@ pub fn LCM(a int, b int) int {
     if b == 0 {
         return 0
     }
-    
-    // Iperine GCD to avoid module-to-module call issue
-    var x int = a
-    var y int = b
-    
-    for y != 0 {
-        var temp int = y
-        y = x % y
-        x = temp
-    }
-    
-    var gcd int = x
-    var prod int = a * b
-    var result int = prod / gcd
-    return result
+
+    return (a * b) / GCD(a, b)
 }
 
 // Factorial
@@ -175,27 +160,8 @@ pub fn IsPrime(n int) int {
     if n % 3 == 0 {
         return 0
     }
-    
-    // Iperine sqrt calculation to avoid module-to-module call
-    var limit int = n / 2
-    if n > 1 {
-        var x int = n / 2
-        var prev int = 0
-        var count int = 0
-        var done int = 0
 
-        for x != prev && done == 0 {
-            if count > 20 {
-                done = 1
-            } else {
-                prev = x
-                x = (x + n / x) / 2
-                count = count + 1
-            }
-        }
-        limit = x
-    }
-    
+    var limit int = Sqrt(n)
     var i int = 5
     
     for i <= limit {
