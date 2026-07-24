@@ -40,6 +40,14 @@ agn::ast::Program parseSource(const std::string& source, const std::string& file
     return parser.parse();
 }
 
+fs::path findRuntimeLib(const fs::path& exeDir, const std::string& buildRelPath, const std::string& fileName) {
+    fs::path installed = exeDir.parent_path() / "lib" / "agnostic" / fileName;
+    if (fs::exists(installed)) return installed;
+    fs::path fromBuild = exeDir.parent_path().parent_path() / buildRelPath;
+    if (fs::exists(fromBuild)) return fromBuild;
+    return installed;
+}
+
 fs::path findModuleFile(const std::string& name, const fs::path& sourceDir, const fs::path& exeDir) {
     for (auto ext : {".agn", ".per"}) {
         fs::path candidate = sourceDir / (name + ext);
@@ -51,6 +59,10 @@ fs::path findModuleFile(const std::string& name, const fs::path& sourceDir, cons
     }
     for (auto ext : {".agn", ".per"}) {
         fs::path candidate = exeDir / "stdlib" / (name + ext);
+        if (fs::exists(candidate)) return candidate;
+    }
+    for (auto ext : {".agn", ".per"}) {
+        fs::path candidate = exeDir.parent_path() / "share" / "agnostic" / "stdlib" / (name + ext);
         if (fs::exists(candidate)) return candidate;
     }
     return {};
@@ -188,11 +200,11 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    fs::path buildDir = exeDir.parent_path().parent_path();
-    fs::path runtimeLib = buildDir / "src/backend/llvm/runtime/libagn_llvm_runtime.a";
-    fs::path memoryLib = buildDir / ("src/memory/" + memMode + "/libagn_memory_" + memMode + ".a");
-    fs::path manualLib = buildDir / "src/memory/manual/libagn_memory_manual.a";
-    fs::path platformLib = buildDir / "src/platform/linux/libagn_platform_linux.a";
+    fs::path runtimeLib = findRuntimeLib(exeDir, "src/backend/llvm/runtime/libagn_llvm_runtime.a", "libagn_llvm_runtime.a");
+    fs::path memoryLib = findRuntimeLib(exeDir, "src/memory/" + memMode + "/libagn_memory_" + memMode + ".a",
+                                         "libagn_memory_" + memMode + ".a");
+    fs::path manualLib = findRuntimeLib(exeDir, "src/memory/manual/libagn_memory_manual.a", "libagn_memory_manual.a");
+    fs::path platformLib = findRuntimeLib(exeDir, "src/platform/linux/libagn_platform_linux.a", "libagn_platform_linux.a");
 
     std::string libGroup = "\"" + runtimeLib.string() + "\" \"" + memoryLib.string() + "\"";
     if (memMode != "manual") libGroup += " \"" + manualLib.string() + "\"";

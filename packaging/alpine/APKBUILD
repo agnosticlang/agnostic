@@ -1,0 +1,23 @@
+# Maintainer: AnmiTaliDev <anmitalidev@nuros.org>
+pkgname=agnostic
+pkgver=${AGNOSTIC_VERSION:-0.0.0}
+pkgrel=0
+pkgdesc="The Agnostic programming language compiler"
+url="https://github.com/agnosticlang/agnostic"
+arch="x86_64"
+license="Apache-2.0"
+depends="llvm-libs"
+makedepends="cmake make llvm-dev clang g++"
+options="!check"
+builddir="$srcdir/build"
+
+build() {
+    cmake -S "$startdir/../.." -B "$builddir" \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DAGNOSTIC_VERSION="$pkgver"
+    cmake --build "$builddir" -- -j"$(nproc)"
+}
+
+package() {
+    DESTDIR="$pkgdir" cmake --install "$builddir" --prefix /usr
+}

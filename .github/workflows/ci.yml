@@ -1,0 +1,142 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+    tags: ["v*"]
+  pull_request:
+
+permissions:
+  contents: write
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake ninja-build llvm-dev clang
+
+      - name: Configure
+        run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        run: cmake --build build
+
+      - name: Run tests
+        run: ./scripts/test.sh build
+
+  package-deb:
+    needs: test
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake ninja-build llvm-dev clang dpkg-dev
+
+      - name: Build and package
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DAGNOSTIC_VERSION="$version"
+          cmake --build build
+          (cd build && cpack -G DEB)
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: agnostic-deb
+          path: build/*.deb
+
+  package-rpm:
+    needs: test
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    container: fedora:latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: dnf install -y cmake ninja-build llvm-devel clang gcc-c++ rpm-build git
+
+      - name: Build and package
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DAGNOSTIC_VERSION="$version"
+          cmake --build build
+          (cd build && cpack -G RPM)
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: agnostic-rpm
+          path: build/*.rpm
+
+  package-apk:
+    needs: test
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    container: alpine:latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: apk add --no-cache alpine-sdk cmake llvm-dev clang g++ sudo
+
+      - name: Build package
+        run: |
+          adduser -D builder
+          addgroup builder abuild
+          chown -R builder:builder .
+          echo "builder ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
+          su builder -c 'abuild-keygen -a -i -n'
+          su builder -c "AGNOSTIC_VERSION=${GITHUB_REF_NAME#v} sh -c 'cd packaging/alpine && abuild -F -r'"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: agnostic-apk
+          path: /home/builder/packages/**/*.apk
+
+  package-arch:
+    needs: test
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    container: archlinux:latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: |
+          pacman -Syu --noconfirm
+          pacman -S --noconfirm base-devel cmake llvm clang git
+
+      - name: Build package
+        run: |
+          useradd -m builder
+          chown -R builder:builder .
+          su builder -c "AGNOSTIC_VERSION=${GITHUB_REF_NAME#v} sh -c 'cd packaging/arch && makepkg -f --noconfirm'"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: agnostic-pacman
+          path: packaging/arch/*.pkg.tar.zst
+
+  release:
+    needs: [package-deb, package-rpm, package-apk, package-arch]
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+
+      - name: Attach packages to release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            agnostic-deb/*.deb
+            agnostic-rpm/*.rpm
+            agnostic-apk/**/*.apk
+            agnostic-pacman/*.pkg.tar.zst
