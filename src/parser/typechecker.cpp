@@ -207,6 +207,7 @@ bool TypeChecker::checkProgram(ast::Program& program) {
 
     for (auto& f : program.functions) registerFunctionSignature(functionKey(f), f);
     for (auto& [modName, mod] : program.modules) {
+        moduleNames_.push_back(modName);
         for (auto& f : mod.functions) {
             if (f.isExported) registerFunctionSignature(modName + "." + f.name, f);
         }
@@ -579,12 +580,27 @@ Type TypeChecker::checkExpression(ast::Expression& expr) {
 
         auto it = functions_.find(key);
         if (it == functions_.end()) {
-            std::string prefix = (isMethod ? localType->structName : n->object) + ".";
-            std::vector<std::string> members;
-            for (auto& fname : functionNames()) {
-                if (fname.rfind(prefix, 0) == 0) members.push_back(fname.substr(prefix.size()));
+            bool objectKnown = isMethod ||
+                std::find(moduleNames_.begin(), moduleNames_.end(), n->object) != moduleNames_.end();
+            std::string suggestion;
+            if (objectKnown) {
+                std::string prefix = (isMethod ? localType->structName : n->object) + ".";
+                std::vector<std::string> members;
+                for (auto& fname : functionNames()) {
+                    if (fname.rfind(prefix, 0) == 0) members.push_back(fname.substr(prefix.size()));
+                }
+                if (isMethod) {
+                    auto fields = fieldNames(localType->structName);
+                    members.insert(members.end(), fields.begin(), fields.end());
+                }
+                suggestion = didYouMean(n->member, members);
+            } else {
+                auto candidates = moduleNames_;
+                auto varNames = visibleVarNames();
+                candidates.insert(candidates.end(), varNames.begin(), varNames.end());
+                suggestion = didYouMean(n->object, candidates);
             }
-            addError("function '" + key + "' not declared" + didYouMean(n->member, members));
+            addError("function '" + key + "' not declared" + suggestion);
             for (auto& a : n->args) checkExpression(a);
             return Type{TypeKind::Unknown};
         }

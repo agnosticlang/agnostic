@@ -93,6 +93,7 @@ private:
 
     std::unordered_map<std::string, std::vector<std::pair<std::string, Type>>> structs_;
     std::unordered_map<std::string, FunctionSignature> functions_;
+    std::vector<std::string> moduleNames_;
     std::vector<ScopeFrame> scopeStack_;
     std::vector<Type> returnTypeStack_;
     int loopDepth_ = 0;

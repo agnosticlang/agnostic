@@ -52,7 +52,7 @@ error: variable 'countr' not declared (did you mean 'counter'?) (in main)
   --> hello.agn:6:5
 ```
 
-Suggestions are Levenshtein-distance based and only appear when a close-enough candidate exists: undeclared variables (checked against locals and top-level functions in scope), undeclared functions and unknown struct or module members (checked against members of the same struct or module), unknown struct fields, and unknown struct names. A typo in a module name itself (`stdi.Println` instead of `stdio.Println`) does not get a suggestion yet.
+Suggestions are Levenshtein-distance based and only appear when a close-enough candidate exists: undeclared variables (checked against locals and top-level functions in scope), unknown struct fields, and unknown struct names. For `object.member(...)`, the compiler first checks whether `object` itself is a known module, struct-typed variable, or import (`stdi.Println` suggests `stdio`); if `object` resolves but `member` does not, it suggests among that struct's or module's own members, including struct fields holding a function value alongside actual methods (`p.writ(...)` suggests the field `write`).
 
 ## Building the compiler from source
 
