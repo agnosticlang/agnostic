@@ -84,9 +84,12 @@ expect_nvm_compile primes "examples/primes.agn" yes
 expect_nvm_compile bubble_sort "examples/bubble_sort.agn" yes
 expect_nvm_compile strings_demo "examples/strings_demo.agn" yes
 expect_nvm_compile fibonacci "examples/fibonacci.agn" yes
+expect_nvm_compile strings_runtime "scripts/testdata/strings_runtime_test.agn" no   # ++ concat unsupported
 
 expect_llvm_run math_stdlib "scripts/testdata/math_test.agn" \
     "$(printf '7\n3\n1024\n9\n6\n12\n120\n1\n0\n10\n55\n1\n0\n55')"
+expect_llvm_run strings_runtime "scripts/testdata/strings_runtime_test.agn" \
+    "$(printf 'foobar\nhello Agnostic, value=00042')"
 expect_llvm_run string_stdlib "scripts/testdata/string_test.agn" \
     "$(printf '5\n0\n-1\n1\nfoobar\n1\n0')"
 

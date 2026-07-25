@@ -634,7 +634,8 @@ struct Codegen::Impl {
     void appendToBuffer(llvm::Value* buf, llvm::Value* posAlloca, llvm::Value* src, llvm::Value* len) {
         auto* pos = builder.CreateLoad(i64Ty, posAlloca);
         auto* dest = builder.CreateGEP(i8Ty, buf, {pos});
-        builder.CreateMemCpy(dest, llvm::MaybeAlign(1), src, llvm::MaybeAlign(1), len);
+        auto* memcpyTy = llvm::FunctionType::get(voidTy, {ptrTy, ptrTy, i64Ty}, false);
+        builder.CreateCall(getRtFn("agn_rt_memcpy", memcpyTy), {dest, src, len});
         builder.CreateStore(builder.CreateAdd(pos, len), posAlloca);
     }
 
@@ -693,13 +694,14 @@ struct Codegen::Impl {
     }
 
     TypedValue genConcat(TypedValue& lhs, TypedValue& rhs) {
+        auto* strlenTy = llvm::FunctionType::get(i64Ty, {ptrTy}, false);
+        auto* memcpyTy = llvm::FunctionType::get(voidTy, {ptrTy, ptrTy, i64Ty}, false);
         auto* buf = builder.CreateAlloca(i8Ty, llvm::ConstantInt::get(i64Ty, 1024), "concatbuf");
-        auto* fnTy = llvm::FunctionType::get(i64Ty, {ptrTy}, false);
-        auto* lenA = builder.CreateCall(getRtFn("agn_rt_strlen", fnTy), {lhs.value});
-        builder.CreateMemCpy(buf, llvm::MaybeAlign(1), lhs.value, llvm::MaybeAlign(1), lenA);
+        auto* lenA = builder.CreateCall(getRtFn("agn_rt_strlen", strlenTy), {lhs.value});
+        builder.CreateCall(getRtFn("agn_rt_memcpy", memcpyTy), {buf, lhs.value, lenA});
         auto* dest2 = builder.CreateGEP(i8Ty, buf, {lenA});
-        auto* lenB = builder.CreateCall(getRtFn("agn_rt_strlen", fnTy), {rhs.value});
-        builder.CreateMemCpy(dest2, llvm::MaybeAlign(1), rhs.value, llvm::MaybeAlign(1), lenB);
+        auto* lenB = builder.CreateCall(getRtFn("agn_rt_strlen", strlenTy), {rhs.value});
+        builder.CreateCall(getRtFn("agn_rt_memcpy", memcpyTy), {dest2, rhs.value, lenB});
         auto* endPtr = builder.CreateGEP(i8Ty, buf, {builder.CreateAdd(lenA, lenB)});
         builder.CreateStore(llvm::ConstantInt::get(i8Ty, 0), endPtr);
         return TypedValue{buf, Type{TypeKind::String}};

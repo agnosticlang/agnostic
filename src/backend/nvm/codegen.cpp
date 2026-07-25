@@ -1001,6 +1001,11 @@ void NVMCodeGen::generateExpression(ast::Expression& expr) {
         materializeString(n->value);
         return;
     }
+    if (std::get_if<ast::TemplateStringExpr>(&expr.node)) {
+        std::fprintf(stderr, "error: template string interpolation ('$(...)') is not supported by the nvm backend "
+                              "(use string.concat)\n");
+        std::exit(1);
+    }
     if (auto* n = std::get_if<ast::IdentifierExpr>(&expr.node)) {
         auto it = vars_.find(n->name);
         if (it != vars_.end()) {
@@ -1016,6 +1021,11 @@ void NVMCodeGen::generateExpression(ast::Expression& expr) {
         return;
     }
     if (auto* n = std::get_if<ast::BinaryExpr>(&expr.node)) {
+        if (n->op == ast::BinaryOp::Concat) {
+            std::fprintf(stderr, "error: the '++' string concatenation operator is not supported by the nvm backend "
+                                  "(use string.concat instead)\n");
+            std::exit(1);
+        }
         generateExpression(*n->left);
         generateExpression(*n->right);
         switch (n->op) {

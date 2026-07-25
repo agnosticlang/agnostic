@@ -1,0 +1,11 @@
+package main
+import "stdio"
+
+func main() {
+    var s string = "foo" ++ "bar"
+    stdio.PrintlnStr(s)
+
+    var name string = "Agnostic"
+    var n int = 42
+    stdio.PrintlnStr("hello $(name), value=$(n:05d)")
+}
