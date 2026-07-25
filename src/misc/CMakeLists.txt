@@ -1,4 +1,4 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 AnmiTaliDev <anmitalidev@nuros.org>
-add_library(agn_misc STATIC diagnostic.cpp)
+add_library(agn_misc STATIC diagnostic.cpp suggest.cpp)
 target_include_directories(agn_misc PUBLIC ${PROJECT_SOURCE_DIR}/include)

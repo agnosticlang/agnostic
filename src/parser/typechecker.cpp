@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 AnmiTaliDev <anmitalidev@nuros.org>
 #include "parser/typechecker.hpp"
+#include "misc/suggest.hpp"
 
 #include <algorithm>
 #include <cstdio>
@@ -161,6 +162,41 @@ void TypeChecker::addError(const std::string& message) {
                                  currentLine_, currentColumn_});
 }
 
+std::string TypeChecker::didYouMean(const std::string& name, const std::vector<std::string>& candidates) const {
+    auto suggestion = agn::misc::suggestClosest(name, candidates);
+    return suggestion ? " (did you mean '" + *suggestion + "'?)" : "";
+}
+
+std::vector<std::string> TypeChecker::visibleVarNames() const {
+    std::vector<std::string> names;
+    for (auto& frame : scopeStack_) {
+        for (auto& [name, type] : frame.vars) names.push_back(name);
+    }
+    return names;
+}
+
+std::vector<std::string> TypeChecker::functionNames() const {
+    std::vector<std::string> names;
+    names.reserve(functions_.size());
+    for (auto& [name, sig] : functions_) names.push_back(name);
+    return names;
+}
+
+std::vector<std::string> TypeChecker::structNames() const {
+    std::vector<std::string> names;
+    names.reserve(structs_.size());
+    for (auto& [name, fields] : structs_) names.push_back(name);
+    return names;
+}
+
+std::vector<std::string> TypeChecker::fieldNames(const std::string& structName) const {
+    std::vector<std::string> names;
+    auto it = structs_.find(structName);
+    if (it == structs_.end()) return names;
+    for (auto& [name, type] : it->second) names.push_back(name);
+    return names;
+}
+
 static std::string functionKey(const ast::Function& f) {
     return f.receiver ? (f.receiver->type + "." + f.name) : f.name;
 }
@@ -287,7 +323,7 @@ void TypeChecker::checkStatement(ast::Statement& stmt) {
     if (auto* n = std::get_if<ast::AssignmentStmt>(&stmt.node)) {
         Type exprType = checkExpression(n->value);
         auto varType = lookupVar(n->name);
-        if (!varType) addError("variable '" + n->name + "' not declared");
+        if (!varType) addError("variable '" + n->name + "' not declared" + didYouMean(n->name, visibleVarNames()));
         else if (!exprType.canAssignTo(*varType)) {
             addError("type mismatch in assignment to '" + n->name + "': expected " + varType->toString() +
                       ", got " + exprType.toString());
@@ -296,7 +332,7 @@ void TypeChecker::checkStatement(ast::Statement& stmt) {
     }
     if (auto* n = std::get_if<ast::ArrayAssignmentStmt>(&stmt.node)) {
         auto varType = lookupVar(n->name);
-        if (!varType) { addError("variable '" + n->name + "' not declared"); return; }
+        if (!varType) { addError("variable '" + n->name + "' not declared" + didYouMean(n->name, visibleVarNames())); return; }
         if (varType->kind != TypeKind::Array) { addError("cannot index into non-array type " + varType->toString()); return; }
         Type indexType = checkExpression(n->index);
         if (!indexType.isNumeric()) addError("array index must be numeric");
@@ -325,7 +361,8 @@ void TypeChecker::checkStatement(ast::Statement& stmt) {
         auto& fields = structs_[objType.structName];
         auto it = std::find_if(fields.begin(), fields.end(), [&](auto& f) { return f.first == n->field; });
         if (it == fields.end()) {
-            addError("struct '" + objType.structName + "' has no field '" + n->field + "'");
+            addError("struct '" + objType.structName + "' has no field '" + n->field + "'" +
+                      didYouMean(n->field, fieldNames(objType.structName)));
         } else if (!valueType.canAssignTo(it->second)) {
             addError("type mismatch assigning to field '" + n->field + "'");
         }
@@ -425,7 +462,10 @@ Type TypeChecker::checkExpression(ast::Expression& expr) {
             t.returnType = std::make_shared<Type>(it->second.returnType);
             return t;
         }
-        addError("variable '" + n->name + "' not declared");
+        auto candidates = visibleVarNames();
+        auto fnNames = functionNames();
+        candidates.insert(candidates.end(), fnNames.begin(), fnNames.end());
+        addError("variable '" + n->name + "' not declared" + didYouMean(n->name, candidates));
         return Type{TypeKind::Unknown};
     }
 
@@ -493,7 +533,12 @@ Type TypeChecker::checkExpression(ast::Expression& expr) {
             }
             return *localType->returnType;
         }
-        addError("function '" + n->function + "' not declared");
+        {
+            auto candidates = functionNames();
+            auto varNames = visibleVarNames();
+            candidates.insert(candidates.end(), varNames.begin(), varNames.end());
+            addError("function '" + n->function + "' not declared" + didYouMean(n->function, candidates));
+        }
         for (auto& a : n->args) checkExpression(a);
         return Type{TypeKind::Unknown};
     }
@@ -534,7 +579,12 @@ Type TypeChecker::checkExpression(ast::Expression& expr) {
 
         auto it = functions_.find(key);
         if (it == functions_.end()) {
-            addError("function '" + key + "' not declared");
+            std::string prefix = (isMethod ? localType->structName : n->object) + ".";
+            std::vector<std::string> members;
+            for (auto& fname : functionNames()) {
+                if (fname.rfind(prefix, 0) == 0) members.push_back(fname.substr(prefix.size()));
+            }
+            addError("function '" + key + "' not declared" + didYouMean(n->member, members));
             for (auto& a : n->args) checkExpression(a);
             return Type{TypeKind::Unknown};
         }
@@ -557,7 +607,10 @@ Type TypeChecker::checkExpression(ast::Expression& expr) {
         Type indexType = checkExpression(*n->index);
         if (!indexType.isNumeric()) addError("array index must be numeric, got " + indexType.toString());
         auto varType = lookupVar(n->name);
-        if (!varType) { addError("variable '" + n->name + "' not declared"); return Type{TypeKind::Unknown}; }
+        if (!varType) {
+            addError("variable '" + n->name + "' not declared" + didYouMean(n->name, visibleVarNames()));
+            return Type{TypeKind::Unknown};
+        }
         if (varType->kind != TypeKind::Array) {
             addError("cannot index into non-array type " + varType->toString());
             return Type{TypeKind::Unknown};
@@ -599,7 +652,8 @@ Type TypeChecker::checkExpression(ast::Expression& expr) {
         auto& fields = structs_[objType.structName];
         auto it = std::find_if(fields.begin(), fields.end(), [&](auto& f) { return f.first == n->field; });
         if (it == fields.end()) {
-            addError("struct '" + objType.structName + "' has no field '" + n->field + "'");
+            addError("struct '" + objType.structName + "' has no field '" + n->field + "'" +
+                      didYouMean(n->field, fieldNames(objType.structName)));
             return Type{TypeKind::Unknown};
         }
         return it->second;
@@ -611,7 +665,7 @@ Type TypeChecker::checkExpression(ast::Expression& expr) {
 
     if (auto* n = std::get_if<ast::StructLiteralExpr>(&expr.node)) {
         if (!structs_.count(n->structName)) {
-            addError("struct '" + n->structName + "' not declared");
+            addError("struct '" + n->structName + "' not declared" + didYouMean(n->structName, structNames()));
             for (auto& [fname, fexpr] : n->fields) { (void)fname; checkExpression(fexpr); }
             return Type{TypeKind::Unknown};
         }
@@ -620,7 +674,8 @@ Type TypeChecker::checkExpression(ast::Expression& expr) {
             Type valueType = checkExpression(fieldExpr);
             auto it = std::find_if(fields.begin(), fields.end(), [&](auto& f) { return f.first == fieldName; });
             if (it == fields.end()) {
-                addError("struct '" + n->structName + "' has no field '" + fieldName + "'");
+                addError("struct '" + n->structName + "' has no field '" + fieldName + "'" +
+                          didYouMean(fieldName, fieldNames(n->structName)));
             } else if (!valueType.canAssignTo(it->second)) {
                 addError("type mismatch for field '" + fieldName + "'");
             }

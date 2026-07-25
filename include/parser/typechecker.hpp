@@ -85,6 +85,11 @@ private:
     std::optional<std::string> evalComptimeConstant(const ast::Expression& expr);
 
     void addError(const std::string& message);
+    std::string didYouMean(const std::string& name, const std::vector<std::string>& candidates) const;
+    std::vector<std::string> visibleVarNames() const;
+    std::vector<std::string> functionNames() const;
+    std::vector<std::string> structNames() const;
+    std::vector<std::string> fieldNames(const std::string& structName) const;
 
     std::unordered_map<std::string, std::vector<std::pair<std::string, Type>>> structs_;
     std::unordered_map<std::string, FunctionSignature> functions_;
