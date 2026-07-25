@@ -10,6 +10,8 @@ namespace agn::misc {
 
 enum class ErrorKind { Lexer, Parser, Type, Module, CodeGen };
 
+std::string extractSourceLine(const std::string& source, size_t line);
+
 class CompileError : public std::exception {
 public:
     CompileError(ErrorKind kind, std::string message, std::string file,

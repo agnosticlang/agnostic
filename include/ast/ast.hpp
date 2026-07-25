@@ -175,6 +175,8 @@ struct Statement {
         PointerAssignmentStmt, FieldAssignmentStmt, IfStmt, ForStmt,
         ReturnStmt, ExpressionStmt, InlineAsmStmt, ComptimeStmt,
         BreakStmt, ContinueStmt> node;
+    size_t line = 0;
+    size_t column = 0;
 };
 
 struct Function {

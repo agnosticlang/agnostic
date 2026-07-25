@@ -176,11 +176,17 @@ std::vector<Token> Lexer::tokenize() {
         skipWhitespace();
         skipComment();
 
+        size_t startLine = line_;
+        size_t startColumn = column_;
+
         if (!currentChar_) {
             tokens.push_back(Token{TokenKind::Eof, "", 0});
+            tokens.back().line = startLine;
+            tokens.back().column = startColumn;
             break;
         }
 
+        size_t sizeBefore = tokens.size();
         char ch = *currentChar_;
         switch (ch) {
             case '\n':
@@ -260,10 +266,16 @@ std::vector<Token> Lexer::tokenize() {
                     CompileError err(ErrorKind::Lexer,
                                       std::string("unexpected character: '") + ch + "'",
                                       file_, line_, column_);
+                    err.withSourceLine(agn::misc::extractSourceLine(input_, line_));
                     err.display();
                     std::exit(1);
                 }
                 break;
+        }
+
+        if (tokens.size() > sizeBefore) {
+            tokens.back().line = startLine;
+            tokens.back().column = startColumn;
         }
     }
 

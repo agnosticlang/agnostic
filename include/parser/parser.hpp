@@ -14,7 +14,7 @@ namespace agn::parser {
 
 class Parser {
 public:
-    Parser(std::vector<lexer::Token> tokens, std::string file);
+    Parser(std::vector<lexer::Token> tokens, std::string file, std::string source);
 
     ast::Program parse();
 
@@ -32,6 +32,7 @@ private:
     std::string parseOptionalReturnType();
 
     ast::Statement parseStatement();
+    ast::Statement parseStatementBody();
     ast::Statement parseVarDecl();
     ast::Statement parseAssignmentLike();
     ast::Statement parsePointerAssignment();
@@ -65,6 +66,7 @@ private:
     std::vector<lexer::Token> tokens_;
     size_t position_ = 0;
     std::string file_;
+    std::string source_;
     bool noStructLiteral_ = false;
 };
 

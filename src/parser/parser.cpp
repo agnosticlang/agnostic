@@ -29,8 +29,8 @@ std::string trim(const std::string& s) {
 
 } // namespace
 
-Parser::Parser(std::vector<Token> tokens, std::string file)
-    : tokens_(std::move(tokens)), file_(std::move(file)) {}
+Parser::Parser(std::vector<Token> tokens, std::string file, std::string source)
+    : tokens_(std::move(tokens)), file_(std::move(file)), source_(std::move(source)) {}
 
 const Token& Parser::current() const { return peek(0); }
 
@@ -55,7 +55,8 @@ void Parser::expect(TokenKind kind) {
 }
 
 void Parser::error(const std::string& message) const {
-    CompileError err(ErrorKind::Parser, message, file_, 1, 1);
+    CompileError err(ErrorKind::Parser, message, file_, current().line, current().column);
+    err.withSourceLine(agn::misc::extractSourceLine(source_, current().line));
     err.display();
     std::exit(1);
 }
@@ -247,6 +248,15 @@ ast::StructDecl Parser::parseStructDecl() {
 }
 
 ast::Statement Parser::parseStatement() {
+    size_t line = current().line;
+    size_t column = current().column;
+    ast::Statement stmt = parseStatementBody();
+    stmt.line = line;
+    stmt.column = column;
+    return stmt;
+}
+
+ast::Statement Parser::parseStatementBody() {
     switch (current().kind) {
         case TokenKind::Var: return parseVarDecl();
         case TokenKind::If: return parseIf();
@@ -714,7 +724,7 @@ ast::Expression Parser::parseTemplateString(const std::string& s) {
 
             lexer::Lexer subLexer(innerExpr, file_);
             auto subTokens = subLexer.tokenize();
-            Parser subParser(subTokens, file_);
+            Parser subParser(subTokens, file_, innerExpr);
             ast::Expression expr = subParser.parseExpression();
 
             parts.push_back(ast::TemplateExprPart{box(std::move(expr)), format});

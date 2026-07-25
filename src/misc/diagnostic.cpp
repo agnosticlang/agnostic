@@ -6,6 +6,19 @@
 
 namespace agn::misc {
 
+std::string extractSourceLine(const std::string& source, size_t line) {
+    if (line == 0) return "";
+    size_t current = 1;
+    size_t pos = 0;
+    while (current < line && pos < source.size()) {
+        if (source[pos] == '\n') current++;
+        pos++;
+    }
+    if (current != line) return "";
+    size_t end = source.find('\n', pos);
+    return source.substr(pos, end == std::string::npos ? std::string::npos : end - pos);
+}
+
 void CompileError::display() const {
     const char* kindStr = "error";
     switch (kind_) {

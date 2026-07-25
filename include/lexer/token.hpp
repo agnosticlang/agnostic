@@ -27,6 +27,8 @@ struct Token {
     TokenKind kind;
     std::string text;
     int64_t number = 0;
+    size_t line = 0;
+    size_t column = 0;
 
     bool operator==(const Token& other) const {
         if (kind != other.kind) return false;

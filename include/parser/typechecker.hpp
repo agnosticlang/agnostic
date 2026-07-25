@@ -35,6 +35,8 @@ struct Type {
 struct TypeError {
     std::string message;
     std::string location;
+    size_t line = 0;
+    size_t column = 0;
 };
 
 struct FunctionSignature {
@@ -92,6 +94,8 @@ private:
     std::vector<TypeError> errors_;
     std::string currentFunction_;
     std::string currentModulePrefix_;
+    size_t currentLine_ = 0;
+    size_t currentColumn_ = 0;
 
     std::string targetOs_;
     std::string targetArch_;

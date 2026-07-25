@@ -157,7 +157,8 @@ void TypeChecker::declareVar(const std::string& name, const Type& type) {
 }
 
 void TypeChecker::addError(const std::string& message) {
-    errors_.push_back(TypeError{message, currentFunction_.empty() ? "global" : currentFunction_});
+    errors_.push_back(TypeError{message, currentFunction_.empty() ? "global" : currentFunction_,
+                                 currentLine_, currentColumn_});
 }
 
 static std::string functionKey(const ast::Function& f) {
@@ -261,6 +262,8 @@ std::optional<bool> TypeChecker::evalComptimeCondition(const ast::Expression& ex
 }
 
 void TypeChecker::checkStatement(ast::Statement& stmt) {
+    currentLine_ = stmt.line;
+    currentColumn_ = stmt.column;
     if (auto* n = std::get_if<ast::VarDeclStmt>(&stmt.node)) {
         Type declared = n->varType.empty() ? Type{TypeKind::Unknown} : resolveType(n->varType);
         if (n->value) {

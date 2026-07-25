@@ -7,6 +7,7 @@
 #include "lexer/lexer.hpp"
 #include "parser/parser.hpp"
 #include "parser/typechecker.hpp"
+#include "misc/diagnostic.hpp"
 
 #include <cstdio>
 #include <cstdlib>
@@ -36,7 +37,7 @@ std::string readFile(const std::string& path) {
 agn::ast::Program parseSource(const std::string& source, const std::string& file) {
     agn::lexer::Lexer lexer(source, file);
     auto tokens = lexer.tokenize();
-    agn::parser::Parser parser(tokens, file);
+    agn::parser::Parser parser(tokens, file, source);
     return parser.parse();
 }
 
@@ -99,7 +100,11 @@ void printUsage(const char* argv0) {
               << "  --backend=llvm|nvm|gcc   select codegen backend (default: llvm)\n"
               << "  --mem=arc|manual|orc     select memory management mode (default: arc; orc allocations don't survive their function)\n"
               << "  --target-os=linux|freebsd|windows|hurd  (default: linux, only linux implemented)\n"
-              << "  --output=<path>          output executable path\n";
+              << "  --output=<path>          output executable path\n"
+              << "  --version                print version and exit\n"
+              << "  --help                   print this message and exit\n"
+              << "\n"
+              << "Example: " << argv0 << " hello.agn --backend=llvm --output=hello\n";
 }
 
 } // namespace
@@ -120,6 +125,10 @@ int main(int argc, char** argv) {
         std::string arg = argv[i];
         if (arg == "--help" || arg == "-h") {
             printUsage(argv[0]);
+            return 0;
+        }
+        else if (arg == "--version") {
+            std::cout << "agnostic " << AGNOSTIC_VERSION << "\n";
             return 0;
         }
         else if (arg.rfind("--backend=", 0) == 0) backend = arg.substr(10);
@@ -154,7 +163,13 @@ int main(int argc, char** argv) {
     agn::parser::TypeChecker checker(targetOs, "x86_64", memMode);
     if (!checker.checkProgram(program)) {
         std::cerr << "type checking failed with " << checker.errors().size() << " error(s):\n";
-        checker.printErrors();
+        for (auto& e : checker.errors()) {
+            agn::misc::CompileError err(agn::misc::ErrorKind::Type,
+                                         e.message + " (in " + e.location + ")",
+                                         sourceFile, e.line, e.column);
+            err.withSourceLine(agn::misc::extractSourceLine(source, e.line));
+            err.display();
+        }
         return 1;
     }
 
