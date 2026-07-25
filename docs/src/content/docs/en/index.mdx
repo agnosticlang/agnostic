@@ -1,0 +1,21 @@
+---
+title: Agnostic
+description: Documentation for the Agnostic programming language.
+---
+
+Agnostic is a statically typed, imperative language. The reference implementation is a compiler written in C++20 with three code generation backends: a native machine code backend built on the LLVM C++ API (`llvm`), a bytecode backend for the Novaria Virtual Machine (`nvm`), and a stub backend for libgccjit (`gcc`, not implemented).
+
+The language has functions, function values and closures that capture variables by reference, structs with methods but no inheritance and no vtables, and `comptime` blocks that select code at compile time based on target OS, target architecture, or memory mode. Generics and pattern matching do not exist. See [Types](/en/types/) for what the type system covers instead.
+
+Executables produced by the `llvm` backend do not link against libc. They call the Linux kernel through raw syscalls and pick a memory management strategy at build time: automatic reference counting (`arc`, the default), manual allocation with no automatic freeing (`manual`), or per-function region allocation (`orc`). Details are in [Toolchain](/en/toolchain/).
+
+- [Getting Started](/en/getting-started/): build the compiler, compile a program, run it.
+- [Syntax](/en/syntax/): packages, functions, variables, comments, operators, string interpolation.
+- [Types](/en/types/): the type system.
+- [Control Flow](/en/control-flow/): `if`, `for`, `break`, `continue`.
+- [Functions and Closures](/en/functions/): function values and capture semantics.
+- [Structs](/en/structs/): fields, methods, struct literals.
+- [Comptime](/en/comptime/): compile-time conditionals.
+- [Modules](/en/modules/): `import`, module resolution, calling functions across modules.
+- [Standard Library](/en/standard-library/): `stdio`, `math`, `string`, `novaria`.
+- [Toolchain](/en/toolchain/): CLI flags, backends, memory modes, packaging.
