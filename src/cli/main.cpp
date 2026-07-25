@@ -178,14 +178,6 @@ int main(int argc, char** argv) {
     if (dot != std::string::npos && dot == stem.size() - 4) stem = stem.substr(0, dot);
     std::string finalOutput = output.empty() ? stem : output;
 
-    if (backend == "gcc") {
-        agn::backend::gcc::GccBackend gccBackend;
-        std::string gccError;
-        gccBackend.generate(program, finalOutput, gccError);
-        std::cerr << "error: " << gccError << "\n";
-        return 1;
-    }
-
     if (backend == "nvm") {
         agn::backend::nvm::NVMCodeGen nvmCodegen(checker);
         auto bytecode = nvmCodegen.generate(program);
@@ -196,27 +188,45 @@ int main(int argc, char** argv) {
         return 0;
     }
 
+    if (backend != "llvm" && backend != "gcc") {
+        std::cerr << "error: unknown --backend= value '" << backend << "'\n";
+        return 1;
+    }
+
     if (targetOs != "linux") {
         std::cerr << "error: only --target-os=linux has a real platform/runtime implementation\n";
         return 1;
     }
 
-    agn::backend::llvm_backend::MemMode mode = agn::backend::llvm_backend::MemMode::Arc;
-    if (memMode == "manual") mode = agn::backend::llvm_backend::MemMode::Manual;
-    else if (memMode == "orc") mode = agn::backend::llvm_backend::MemMode::Orc;
-    else if (memMode != "arc") {
+    if (memMode != "arc" && memMode != "manual" && memMode != "orc") {
         std::cerr << "error: unknown --mem= value '" << memMode << "'\n";
         return 1;
     }
 
-    agn::backend::llvm_backend::Codegen codegen(checker, mode, fs::path(sourceFile).filename().string());
-    codegen.generate(program);
-
     std::string objPath = finalOutput + ".o";
     std::string codegenError;
-    if (!codegen.emitObjectFile(objPath, codegenError)) {
-        std::cerr << "error: " << codegenError << "\n";
-        return 1;
+    if (backend == "gcc") {
+        agn::backend::gcc::MemMode mode = agn::backend::gcc::MemMode::Arc;
+        if (memMode == "manual") mode = agn::backend::gcc::MemMode::Manual;
+        else if (memMode == "orc") mode = agn::backend::gcc::MemMode::Orc;
+
+        agn::backend::gcc::GccBackend codegen(checker, mode, fs::path(sourceFile).filename().string());
+        codegen.generate(program);
+        if (!codegen.emitObjectFile(objPath, codegenError)) {
+            std::cerr << "error: " << codegenError << "\n";
+            return 1;
+        }
+    } else {
+        agn::backend::llvm_backend::MemMode mode = agn::backend::llvm_backend::MemMode::Arc;
+        if (memMode == "manual") mode = agn::backend::llvm_backend::MemMode::Manual;
+        else if (memMode == "orc") mode = agn::backend::llvm_backend::MemMode::Orc;
+
+        agn::backend::llvm_backend::Codegen codegen(checker, mode, fs::path(sourceFile).filename().string());
+        codegen.generate(program);
+        if (!codegen.emitObjectFile(objPath, codegenError)) {
+            std::cerr << "error: " << codegenError << "\n";
+            return 1;
+        }
     }
 
     fs::path runtimeLib = findRuntimeLib(exeDir, "src/backend/llvm/runtime/libagn_llvm_runtime.a", "libagn_llvm_runtime.a");

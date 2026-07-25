@@ -6,8 +6,9 @@ pkgdesc="The Agnostic programming language compiler"
 arch=('x86_64')
 url="https://github.com/agnosticlang/agnostic"
 license=('Apache-2.0')
-depends=('llvm-libs')
-makedepends=('cmake' 'llvm' 'clang')
+depends=('llvm-libs' 'libgccjit')
+makedepends=('cmake' 'llvm' 'clang' 'libgccjit')
+options=('staticlibs' '!strip')
 source=()
 
 build() {

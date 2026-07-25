@@ -6,9 +6,9 @@ pkgdesc="The Agnostic programming language compiler"
 url="https://github.com/agnosticlang/agnostic"
 arch="x86_64"
 license="Apache-2.0"
-depends="llvm-libs"
-makedepends="cmake make llvm-dev clang g++"
-options="!check"
+depends="llvm-libs libgccjit"
+makedepends="cmake make llvm-dev clang g++ libgccjit-dev"
+options="!check !strip"
 builddir="$srcdir/build"
 
 build() {

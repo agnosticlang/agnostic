@@ -3,15 +3,26 @@
 #pragma once
 
 #include "ast/ast.hpp"
+#include "parser/typechecker.hpp"
 
+#include <memory>
 #include <string>
 
 namespace agn::backend::gcc {
 
-// TODO: libgccjit-based codegen. Not implemented yet.
+enum class MemMode { Arc, Manual, Orc };
+
 class GccBackend {
 public:
-    bool generate(agn::ast::Program& program, const std::string& outputPath, std::string& errorOut);
+    GccBackend(agn::parser::TypeChecker& checker, MemMode mode, const std::string& moduleName);
+    ~GccBackend();
+
+    void generate(agn::ast::Program& program);
+    bool emitObjectFile(const std::string& path, std::string& errorOut);
+
+private:
+    struct Impl;
+    std::unique_ptr<Impl> impl_;
 };
 
 } // namespace agn::backend::gcc

@@ -43,7 +43,17 @@ var a Vector2 = Vector2{x: 3, y: 4}
 stdio.Println(a.Length2())   // 25
 ```
 
-The receiver is passed by value like any other parameter; a method that needs to mutate the caller's struct should be called on a variable, and field assignment goes through that variable directly (`a.x = 10`), not through the method's own receiver copy.
+The receiver is passed by reference (as a hidden pointer to the caller's variable), not copied. Assigning to a receiver field inside a method mutates the caller's own struct:
+
+```agn
+func (v Vector2) SetX(newX i64) {
+    v.x = newX
+}
+
+var a Vector2 = Vector2{x: 3, y: 4}
+a.SetX(99)
+stdio.Println(a.x)   // 99
+```
 
 ## Function-typed fields
 

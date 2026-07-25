@@ -21,7 +21,7 @@ agnostic <source.agn> [options]
 
 ### llvm (по умолчанию)
 
-Генерирует нативный машинный код через C++ API LLVM (`IRBuilder`, `Module`, `TargetMachine`), затем линкует его в статический исполняемый файл командой `cc -nostdlib -static -no-pie -e _start`. Результат не линкуется с libc; стандартная библиотека и рантайм обращаются к ядру Linux через сырые системные вызовы (`src/platform/linux`). Это единственный бэкенд, где рабочие замыкания, указатели, структуры, `comptime` и шаблонные строки.
+Генерирует нативный машинный код через C++ API LLVM (`IRBuilder`, `Module`, `TargetMachine`), затем линкует его в статический исполняемый файл командой `cc -nostdlib -static -no-pie -e _start`. Результат не линкуется с libc; стандартная библиотека и рантайм обращаются к ядру Linux через сырые системные вызовы (`src/platform/linux`).
 
 ### nvm
 
@@ -29,7 +29,7 @@ agnostic <source.agn> [options]
 
 ### gcc
 
-Не реализован. Выбор `--backend=gcc` завершается ошибкой «the gcc/libgccjit backend is not implemented yet».
+Генерирует нативный машинный код через libgccjit, встраиваемую библиотеку кодогенерации GCC, и линкует так же, как бэкенд `llvm`. Обладает тем же набором возможностей, что и `llvm` (замыкания, структуры, указатели, `comptime`, все три режима `--mem=`), и использует те же статические библиотеки рантайма и линковку без libc. Для сборки компилятора с этим бэкендом нужны `libgccjit.h` и `libgccjit.so` в системе (Arch Linux: пакет `libgccjit`; Fedora: `libgccjit-devel`; Debian/Ubuntu: `libgccjit-dev`).
 
 ## Режимы памяти
 

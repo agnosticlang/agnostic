@@ -21,7 +21,7 @@ agnostic <source.agn> [options]
 
 ### llvm (default)
 
-Generates native machine code through the LLVM C++ API (`IRBuilder`, `Module`, `TargetMachine`), then links it into a static executable with `cc -nostdlib -static -no-pie -e _start`. The result does not link libc; the standard library and runtime call the Linux kernel through raw syscalls (`src/platform/linux`). This is the only backend with working closures, pointers, structs, `comptime`, and template strings.
+Generates native machine code through the LLVM C++ API (`IRBuilder`, `Module`, `TargetMachine`), then links it into a static executable with `cc -nostdlib -static -no-pie -e _start`. The result does not link libc; the standard library and runtime call the Linux kernel through raw syscalls (`src/platform/linux`).
 
 ### nvm
 
@@ -29,7 +29,7 @@ Generates bytecode for the Novaria Virtual Machine and writes it to `<output>.bi
 
 ### gcc
 
-Not implemented. Selecting `--backend=gcc` fails with "the gcc/libgccjit backend is not implemented yet".
+Generates native machine code through libgccjit, GCC's embeddable code generation library, and links it the same way the `llvm` backend does. It has the same feature set as `llvm` (closures, structs, pointers, `comptime`, all three `--mem=` modes) and shares the same runtime static libraries and libc-free linking. Building the compiler with this backend needs `libgccjit.h` and `libgccjit.so` on the system (Arch Linux: package `libgccjit`; Fedora: `libgccjit-devel`; Debian/Ubuntu: `libgccjit-dev`).
 
 ## Memory modes
 
