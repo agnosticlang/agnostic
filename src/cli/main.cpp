@@ -118,7 +118,11 @@ int main(int argc, char** argv) {
 
     for (int i = 1; i < argc; i++) {
         std::string arg = argv[i];
-        if (arg.rfind("--backend=", 0) == 0) backend = arg.substr(10);
+        if (arg == "--help" || arg == "-h") {
+            printUsage(argv[0]);
+            return 0;
+        }
+        else if (arg.rfind("--backend=", 0) == 0) backend = arg.substr(10);
         else if (arg.rfind("--mem=", 0) == 0) memMode = arg.substr(6);
         else if (arg.rfind("--target-os=", 0) == 0) targetOs = arg.substr(12);
         else if (arg.rfind("--output=", 0) == 0) output = arg.substr(9);
