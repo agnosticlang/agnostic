@@ -43,6 +43,17 @@ Not implemented. Selecting `--backend=gcc` fails with "the gcc/libgccjit backend
 
 Only `linux` has a real platform implementation. `freebsd`, `windows`, and `hurd` are unimplemented stubs; compiling with `--backend=llvm` and any `--target-os=` other than `linux` fails with "only --target-os=linux has a real platform/runtime implementation".
 
+## Diagnostics
+
+Type errors report a real `file:line:column`, a colored pointer into the source line, and, where the compiler finds a close match, a suggestion:
+
+```
+error: variable 'countr' not declared (did you mean 'counter'?) (in main)
+  --> hello.agn:6:5
+```
+
+Suggestions are Levenshtein-distance based and only appear when a close-enough candidate exists: undeclared variables (checked against locals and top-level functions in scope), undeclared functions and unknown struct or module members (checked against members of the same struct or module), unknown struct fields, and unknown struct names. A typo in a module name itself (`stdi.Println` instead of `stdio.Println`) does not get a suggestion yet.
+
 ## Building the compiler from source
 
 ```sh
