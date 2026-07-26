@@ -18,7 +18,7 @@ jobs:
       - name: Install build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y cmake ninja-build llvm-dev clang libgccjit-dev
+          sudo apt-get install -y cmake ninja-build llvm-dev clang libgccjit-13-dev
 
       - name: Configure
         run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
@@ -39,7 +39,7 @@ jobs:
       - name: Install build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y cmake ninja-build llvm-dev clang libgccjit-dev dpkg-dev
+          sudo apt-get install -y cmake ninja-build llvm-dev clang libgccjit-13-dev dpkg-dev
 
       - name: Build and package
         run: |
