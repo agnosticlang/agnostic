@@ -65,6 +65,19 @@ expect_nvm_compile() {
     echo "PASS: $name (nvm)"
 }
 
+expect_freebsd_compile() {
+    name=$1
+    path=$2
+    out="$WORK_DIR/${name}_freebsd"
+
+    if ! "$AGNOSTIC" "$path" --backend=llvm --target-os=freebsd --output="$out" >/dev/null 2>&1; then
+        echo "FAIL: $name (freebsd) did not compile"
+        fail=1
+        return
+    fi
+    echo "PASS: $name (freebsd, compile-only; llvm+gcc execution verified manually on a FreeBSD VM, not in CI)"
+}
+
 expect_llvm_run closures "examples/closures.agn" "$(printf '1\n2\n3\n42')"
 expect_llvm_run structs "examples/structs.agn" "$(printf '25\n4\n5\n10')"
 expect_llvm_run comptime_platform "examples/comptime_platform.agn" "1"
@@ -119,5 +132,19 @@ expect_gcc_run string_stdlib "scripts/testdata/string_test.agn" \
 
 expect_nvm_compile math_stdlib "scripts/testdata/math_test.agn" yes
 expect_nvm_compile string_stdlib "scripts/testdata/string_test.agn" yes
+
+expect_freebsd_compile closures "examples/closures.agn"
+expect_freebsd_compile structs "examples/structs.agn"
+expect_freebsd_compile comptime_platform "examples/comptime_platform.agn"
+expect_freebsd_compile inlineasm "examples/inlineasm.agn"
+expect_freebsd_compile hello "examples/hello.agn"
+expect_freebsd_compile fizzbuzz "examples/fizzbuzz.agn"
+expect_freebsd_compile primes "examples/primes.agn"
+expect_freebsd_compile bubble_sort "examples/bubble_sort.agn"
+expect_freebsd_compile strings_demo "examples/strings_demo.agn"
+expect_freebsd_compile fibonacci "examples/fibonacci.agn"
+expect_freebsd_compile math_stdlib "scripts/testdata/math_test.agn"
+expect_freebsd_compile strings_runtime "scripts/testdata/strings_runtime_test.agn"
+expect_freebsd_compile string_stdlib "scripts/testdata/string_test.agn"
 
 exit $fail

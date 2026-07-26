@@ -41,7 +41,7 @@ Generates native machine code through libgccjit, GCC's embeddable code generatio
 
 ## target-os
 
-Only `linux` has a real platform implementation. `freebsd`, `windows`, and `hurd` are unimplemented stubs; compiling with `--backend=llvm` and any `--target-os=` other than `linux` fails with "only --target-os=linux has a real platform/runtime implementation".
+`linux` and `freebsd` have real platform implementations; `windows` and `hurd` are unimplemented stubs and fail with "only --target-os=linux and --target-os=freebsd have a real platform/runtime implementation". The `freebsd` target links raw amd64 syscalls directly (no libc) and brands the resulting static ELF with `EI_OSABI=ELFOSABI_FREEBSD`, same as `brandelf -t FreeBSD`. Verified by running compiled binaries from both the `llvm` and `gcc` backends (including closures and structs, which exercise the heap allocator) on a real FreeBSD 15.1 VM.
 
 ## Diagnostics
 

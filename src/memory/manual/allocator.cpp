@@ -1,7 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 AnmiTaliDev <anmitalidev@nuros.org>
 #include "memory/manual/allocator.hpp"
+#if defined(AGN_TARGET_FREEBSD)
+#include "platform/freebsd/platform.hpp"
+#else
 #include "platform/linux/platform.hpp"
+#endif
 
 namespace agn::memory::manual {
 

@@ -41,7 +41,7 @@ agnostic <source.agn> [options]
 
 ## target-os
 
-Реальная реализация платформы есть только для `linux`. `freebsd`, `windows` и `hurd` — нереализованные заглушки; компиляция с `--backend=llvm` и любым `--target-os=`, кроме `linux`, завершается ошибкой «only --target-os=linux has a real platform/runtime implementation».
+Реальная реализация платформы есть для `linux` и `freebsd`. `windows` и `hurd` — нереализованные заглушки, завершаются ошибкой «only --target-os=linux and --target-os=freebsd have a real platform/runtime implementation». Бэкенд `freebsd` линкует сырые amd64-сисколлы напрямую (без libc) и брендирует итоговый статический ELF полем `EI_OSABI=ELFOSABI_FREEBSD`, как это делает `brandelf -t FreeBSD`. Проверено реальным запуском скомпилированных бинарников с обоих бэкендов, `llvm` и `gcc` (включая замыкания и структуры, которые задействуют аллокатор кучи), на настоящей VM с FreeBSD 15.1.
 
 ## Диагностика
 

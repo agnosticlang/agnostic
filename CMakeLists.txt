@@ -48,6 +48,8 @@ set_target_properties(agnostic_lib PROPERTIES EXPORT_NAME agnostic)
 
 install(TARGETS agnostic RUNTIME DESTINATION bin)
 install(TARGETS agn_llvm_runtime agn_memory_arc agn_memory_manual agn_memory_orc agn_platform_linux
+                agn_llvm_runtime_freebsd agn_memory_arc_freebsd agn_memory_manual_freebsd
+                agn_memory_orc_freebsd agn_platform_freebsd
         ARCHIVE DESTINATION lib/agnostic)
 install(DIRECTORY stdlib/ DESTINATION share/agnostic/stdlib)
 

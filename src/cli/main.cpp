@@ -99,7 +99,7 @@ void printUsage(const char* argv0) {
     std::cerr << "Usage: " << argv0 << " <source.agn> [options]\n"
               << "  --backend=llvm|nvm|gcc   select codegen backend (default: llvm)\n"
               << "  --mem=arc|manual|orc     select memory management mode (default: arc; orc allocations don't survive their function)\n"
-              << "  --target-os=linux|freebsd|windows|hurd  (default: linux, only linux implemented)\n"
+              << "  --target-os=linux|freebsd|windows|hurd  (default: linux, only linux/freebsd implemented)\n"
               << "  --output=<path>          output executable path\n"
               << "  --version                print version and exit\n"
               << "  --help                   print this message and exit\n"
@@ -193,8 +193,8 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    if (targetOs != "linux") {
-        std::cerr << "error: only --target-os=linux has a real platform/runtime implementation\n";
+    if (targetOs != "linux" && targetOs != "freebsd") {
+        std::cerr << "error: only --target-os=linux and --target-os=freebsd have a real platform/runtime implementation\n";
         return 1;
     }
 
@@ -229,11 +229,15 @@ int main(int argc, char** argv) {
         }
     }
 
-    fs::path runtimeLib = findRuntimeLib(exeDir, "src/backend/llvm/runtime/libagn_llvm_runtime.a", "libagn_llvm_runtime.a");
-    fs::path memoryLib = findRuntimeLib(exeDir, "src/memory/" + memMode + "/libagn_memory_" + memMode + ".a",
-                                         "libagn_memory_" + memMode + ".a");
-    fs::path manualLib = findRuntimeLib(exeDir, "src/memory/manual/libagn_memory_manual.a", "libagn_memory_manual.a");
-    fs::path platformLib = findRuntimeLib(exeDir, "src/platform/linux/libagn_platform_linux.a", "libagn_platform_linux.a");
+    std::string osSuffix = targetOs == "freebsd" ? "_freebsd" : "";
+    fs::path runtimeLib = findRuntimeLib(exeDir, "src/backend/llvm/runtime/libagn_llvm_runtime" + osSuffix + ".a",
+                                          "libagn_llvm_runtime" + osSuffix + ".a");
+    fs::path memoryLib = findRuntimeLib(exeDir, "src/memory/" + memMode + "/libagn_memory_" + memMode + osSuffix + ".a",
+                                         "libagn_memory_" + memMode + osSuffix + ".a");
+    fs::path manualLib = findRuntimeLib(exeDir, "src/memory/manual/libagn_memory_manual" + osSuffix + ".a",
+                                         "libagn_memory_manual" + osSuffix + ".a");
+    fs::path platformLib = findRuntimeLib(exeDir, "src/platform/" + targetOs + "/libagn_platform_" + targetOs + ".a",
+                                           "libagn_platform_" + targetOs + ".a");
 
     std::string libGroup = "\"" + runtimeLib.string() + "\" \"" + memoryLib.string() + "\"";
     if (memMode != "manual") libGroup += " \"" + manualLib.string() + "\"";
@@ -245,6 +249,15 @@ int main(int argc, char** argv) {
     if (rc != 0) {
         std::cerr << "error: linking failed (object file kept at " << objPath << ")\n";
         return 1;
+    }
+
+    if (targetOs == "freebsd") {
+        std::fstream elf(finalOutput, std::ios::in | std::ios::out | std::ios::binary);
+        if (elf) {
+            elf.seekp(7);
+            char osabi = 9;
+            elf.write(&osabi, 1);
+        }
     }
 
     std::remove(objPath.c_str());
