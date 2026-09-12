@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 AnmiTaliDev <anmitalidev@nuros.org>
 #include "parser/monomorphize.hpp"
+#include "parser/comptime_eval.hpp"
 
 #include <cctype>
 #include <cstdio>
@@ -13,6 +14,18 @@ namespace agn::parser {
 namespace {
 
 using Subst = std::unordered_map<std::string, std::string>;
+using ValueSubst = std::unordered_map<std::string, ComptimeValue>;
+
+struct GenSubst {
+    const Subst* types = nullptr;
+    const ValueSubst* values = nullptr;
+};
+
+struct GenericArg {
+    bool isType = false;
+    std::string typeName;
+    ComptimeValue value;
+};
 
 struct MonoState {
     std::unordered_map<std::string, ast::StructDecl> templates;
@@ -24,12 +37,17 @@ struct MonoState {
     std::unordered_set<std::string> registeredFns;
     std::unordered_set<std::string> inProgressFns;
     std::vector<ast::Function> newFunctions;
+
+    ast::Program* program = nullptr;
+    std::string targetOs;
+    std::string targetArch;
+    std::string memMode;
 };
 
 std::string rewriteTypeString(const std::string& s, MonoState& st, const Subst* subst);
-void rewriteStmt(ast::Statement& s, MonoState& st, const Subst* subst);
-void rewriteExpr(ast::Expression& e, MonoState& st, const Subst* subst);
-std::string instantiateFunction(const std::string& name, const std::vector<std::string>& typeArgs, MonoState& st);
+void rewriteStmt(ast::Statement& s, MonoState& st, const GenSubst& subst);
+void rewriteExpr(ast::Expression& e, MonoState& st, const GenSubst& subst);
+std::string instantiateFunction(const std::string& name, const std::vector<GenericArg>& args, MonoState& st);
 
 ast::Expression cloneExpr(const ast::Expression& e);
 ast::Statement cloneStmt(const ast::Statement& s);
@@ -216,6 +234,18 @@ std::string mangle(const std::string& name, const std::vector<std::string>& args
     return m;
 }
 
+std::string argKey(const GenericArg& a) {
+    if (a.isType) return a.typeName;
+    switch (a.value.kind) {
+        case ComptimeValue::Kind::I64: return std::to_string(a.value.i);
+        case ComptimeValue::Kind::F64: return std::to_string(a.value.f);
+        case ComptimeValue::Kind::Bool: return a.value.b ? "true" : "false";
+        case ComptimeValue::Kind::String: return a.value.s;
+        case ComptimeValue::Kind::Void: return "void";
+    }
+    return "";
+}
+
 std::string instantiate(const std::string& name, const std::vector<std::string>& args, MonoState& st) {
     std::string mangled = mangle(name, args);
     if (st.registered.count(mangled)) return mangled;
@@ -300,15 +330,15 @@ std::string rewriteTypeString(const std::string& s, MonoState& st, const Subst* 
     return rewriteOne(s, pos, st, subst);
 }
 
-void rewriteStmt(ast::Statement& s, MonoState& st, const Subst* subst) {
+void rewriteStmt(ast::Statement& s, MonoState& st, const GenSubst& subst) {
     std::visit(
         [&](auto& node) {
             using T = std::decay_t<decltype(node)>;
             if constexpr (std::is_same_v<T, ast::VarDeclStmt>) {
-                if (!node.varType.empty()) node.varType = rewriteTypeString(node.varType, st, subst);
+                if (!node.varType.empty()) node.varType = rewriteTypeString(node.varType, st, subst.types);
                 if (node.value) rewriteExpr(*node.value, st, subst);
             } else if constexpr (std::is_same_v<T, ast::ArrayDeclStmt>) {
-                node.elementType = rewriteTypeString(node.elementType, st, subst);
+                node.elementType = rewriteTypeString(node.elementType, st, subst.types);
             } else if constexpr (std::is_same_v<T, ast::AssignmentStmt>) {
                 rewriteExpr(node.value, st, subst);
             } else if constexpr (std::is_same_v<T, ast::ArrayAssignmentStmt>) {
@@ -339,11 +369,25 @@ void rewriteStmt(ast::Statement& s, MonoState& st, const Subst* subst) {
         s.node);
 }
 
-void rewriteExpr(ast::Expression& e, MonoState& st, const Subst* subst) {
+void rewriteExpr(ast::Expression& e, MonoState& st, const GenSubst& subst) {
     std::visit(
         [&](auto& node) {
             using T = std::decay_t<decltype(node)>;
-            if constexpr (std::is_same_v<T, ast::BinaryExpr>) {
+            if constexpr (std::is_same_v<T, ast::IdentifierExpr>) {
+                if (subst.values) {
+                    auto it = subst.values->find(node.name);
+                    if (it != subst.values->end()) {
+                        const ComptimeValue& v = it->second;
+                        switch (v.kind) {
+                            case ComptimeValue::Kind::I64: e.node = ast::NumberExpr{v.i}; return;
+                            case ComptimeValue::Kind::F64: e.node = ast::FloatExpr{v.f}; return;
+                            case ComptimeValue::Kind::Bool: e.node = ast::BoolExpr{v.b}; return;
+                            case ComptimeValue::Kind::String: e.node = ast::StringExpr{v.s}; return;
+                            case ComptimeValue::Kind::Void: break;
+                        }
+                    }
+                }
+            } else if constexpr (std::is_same_v<T, ast::BinaryExpr>) {
                 rewriteExpr(*node.left, st, subst);
                 rewriteExpr(*node.right, st, subst);
             } else if constexpr (std::is_same_v<T, ast::UnaryExpr>) {
@@ -355,22 +399,36 @@ void rewriteExpr(ast::Expression& e, MonoState& st, const Subst* subst) {
                     for (size_t i = 0; i < tmplIt->second.params.size() && i < node.args.size(); i++) {
                         if (tmplIt->second.params[i].isComptime) comptimeIndices.push_back(i);
                     }
-                    std::vector<std::string> typeArgs;
+                    std::vector<GenericArg> args;
                     for (size_t idx : comptimeIndices) {
-                        auto* ident = std::get_if<ast::IdentifierExpr>(&node.args[idx].node);
-                        if (!ident) {
-                            std::fprintf(stderr, "error: argument %zu of '%s' must be a type name\n", idx,
-                                         node.function.c_str());
-                            std::exit(1);
+                        rewriteExpr(node.args[idx], st, subst);
+                        const ast::Parameter& param = tmplIt->second.params[idx];
+                        if (param.type == "type") {
+                            auto* ident = std::get_if<ast::IdentifierExpr>(&node.args[idx].node);
+                            if (!ident) {
+                                std::fprintf(stderr, "error: argument %zu of '%s' must be a type name\n", idx,
+                                             node.function.c_str());
+                                std::exit(1);
+                            }
+                            std::string typeName = ident->name;
+                            if (subst.types) {
+                                auto it = subst.types->find(typeName);
+                                if (it != subst.types->end()) typeName = it->second;
+                            }
+                            args.push_back(GenericArg{true, typeName, ComptimeValue{}});
+                        } else {
+                            ComptimeEvaluator evaluator(*st.program, st.targetOs, st.targetArch, st.memMode);
+                            auto val = evaluator.eval(node.args[idx]);
+                            if (!val) {
+                                std::fprintf(stderr,
+                                             "error: argument %zu of '%s' must be a compile-time constant: %s\n",
+                                             idx, node.function.c_str(), evaluator.lastError().c_str());
+                                std::exit(1);
+                            }
+                            args.push_back(GenericArg{false, "", *val});
                         }
-                        std::string typeName = ident->name;
-                        if (subst) {
-                            auto it = subst->find(typeName);
-                            if (it != subst->end()) typeName = it->second;
-                        }
-                        typeArgs.push_back(std::move(typeName));
                     }
-                    std::string mangled = instantiateFunction(node.function, typeArgs, st);
+                    std::string mangled = instantiateFunction(node.function, args, st);
                     for (auto it = comptimeIndices.rbegin(); it != comptimeIndices.rend(); ++it) {
                         node.args.erase(node.args.begin() + static_cast<long>(*it));
                     }
@@ -393,11 +451,11 @@ void rewriteExpr(ast::Expression& e, MonoState& st, const Subst* subst) {
             } else if constexpr (std::is_same_v<T, ast::FieldAccessExpr>) {
                 rewriteExpr(*node.object, st, subst);
             } else if constexpr (std::is_same_v<T, ast::FunctionLiteralExpr>) {
-                for (auto& p : node.params) p.type = rewriteTypeString(p.type, st, subst);
-                node.returnType = rewriteTypeString(node.returnType, st, subst);
+                for (auto& p : node.params) p.type = rewriteTypeString(p.type, st, subst.types);
+                node.returnType = rewriteTypeString(node.returnType, st, subst.types);
                 for (auto& s2 : node.body) rewriteStmt(s2, st, subst);
             } else if constexpr (std::is_same_v<T, ast::StructLiteralExpr>) {
-                node.structName = rewriteTypeString(node.structName, st, subst);
+                node.structName = rewriteTypeString(node.structName, st, subst.types);
                 for (auto& [fname, fexpr] : node.fields) rewriteExpr(fexpr, st, subst);
             } else if constexpr (std::is_same_v<T, ast::TemplateStringExpr>) {
                 for (auto& part : node.parts) {
@@ -408,8 +466,10 @@ void rewriteExpr(ast::Expression& e, MonoState& st, const Subst* subst) {
         e.node);
 }
 
-std::string instantiateFunction(const std::string& name, const std::vector<std::string>& typeArgs, MonoState& st) {
-    std::string mangled = mangle(name, typeArgs);
+std::string instantiateFunction(const std::string& name, const std::vector<GenericArg>& args, MonoState& st) {
+    std::vector<std::string> keys;
+    for (auto& a : args) keys.push_back(argKey(a));
+    std::string mangled = mangle(name, keys);
     if (st.registeredFns.count(mangled)) return mangled;
     if (st.inProgressFns.count(mangled)) {
         std::fprintf(stderr, "error: recursive generic instantiation of '%s'\n", name.c_str());
@@ -422,18 +482,23 @@ std::string instantiateFunction(const std::string& name, const std::vector<std::
     }
     const ast::Function& tmpl = tmplIt->second;
 
-    std::vector<std::string> comptimeNames;
+    std::vector<const ast::Parameter*> comptimeParams;
     for (auto& p : tmpl.params) {
-        if (p.isComptime) comptimeNames.push_back(p.name);
+        if (p.isComptime) comptimeParams.push_back(&p);
     }
-    if (comptimeNames.size() != typeArgs.size()) {
-        std::fprintf(stderr, "error: '%s' expects %zu compile-time type argument(s), got %zu\n", name.c_str(),
-                     comptimeNames.size(), typeArgs.size());
+    if (comptimeParams.size() != args.size()) {
+        std::fprintf(stderr, "error: '%s' expects %zu compile-time argument(s), got %zu\n", name.c_str(),
+                     comptimeParams.size(), args.size());
         std::exit(1);
     }
 
-    Subst subst;
-    for (size_t i = 0; i < comptimeNames.size(); i++) subst[comptimeNames[i]] = typeArgs[i];
+    Subst typeSubst;
+    ValueSubst valueSubst;
+    for (size_t i = 0; i < comptimeParams.size(); i++) {
+        if (args[i].isType) typeSubst[comptimeParams[i]->name] = args[i].typeName;
+        else valueSubst[comptimeParams[i]->name] = args[i].value;
+    }
+    GenSubst subst{&typeSubst, &valueSubst};
 
     st.inProgressFns.insert(mangled);
 
@@ -442,11 +507,11 @@ std::string instantiateFunction(const std::string& name, const std::vector<std::
     concrete.isExported = tmpl.isExported;
     for (auto& p : tmpl.params) {
         if (p.isComptime) continue;
-        concrete.params.push_back(ast::Parameter{p.name, rewriteTypeString(p.type, st, &subst), false});
+        concrete.params.push_back(ast::Parameter{p.name, rewriteTypeString(p.type, st, subst.types), false});
     }
-    concrete.returnType = rewriteTypeString(tmpl.returnType, st, &subst);
+    concrete.returnType = rewriteTypeString(tmpl.returnType, st, subst.types);
     concrete.body = cloneStmts(tmpl.body);
-    for (auto& s : concrete.body) rewriteStmt(s, st, &subst);
+    for (auto& s : concrete.body) rewriteStmt(s, st, subst);
 
     st.inProgressFns.erase(mangled);
     st.registeredFns.insert(mangled);
@@ -455,16 +520,22 @@ std::string instantiateFunction(const std::string& name, const std::vector<std::
 }
 
 void rewriteFunction(ast::Function& f, MonoState& st) {
-    if (f.receiver) f.receiver->type = rewriteTypeString(f.receiver->type, st, nullptr);
-    for (auto& p : f.params) p.type = rewriteTypeString(p.type, st, nullptr);
-    f.returnType = rewriteTypeString(f.returnType, st, nullptr);
-    for (auto& s : f.body) rewriteStmt(s, st, nullptr);
+    GenSubst subst{};
+    if (f.receiver) f.receiver->type = rewriteTypeString(f.receiver->type, st, subst.types);
+    for (auto& p : f.params) p.type = rewriteTypeString(p.type, st, subst.types);
+    f.returnType = rewriteTypeString(f.returnType, st, subst.types);
+    for (auto& s : f.body) rewriteStmt(s, st, subst);
 }
 
 } // namespace
 
-void monomorphizeGenerics(ast::Program& program) {
+void monomorphizeGenerics(ast::Program& program, const std::string& targetOs, const std::string& targetArch,
+                           const std::string& memMode) {
     MonoState st;
+    st.program = &program;
+    st.targetOs = targetOs;
+    st.targetArch = targetArch;
+    st.memMode = memMode;
 
     std::vector<ast::StructDecl> concrete;
     for (auto& s : program.structs) {

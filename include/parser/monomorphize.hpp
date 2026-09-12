@@ -4,8 +4,11 @@
 
 #include "ast/ast.hpp"
 
+#include <string>
+
 namespace agn::parser {
 
-void monomorphizeGenerics(ast::Program& program);
+void monomorphizeGenerics(ast::Program& program, const std::string& targetOs, const std::string& targetArch,
+                           const std::string& memMode);
 
 } // namespace agn::parser

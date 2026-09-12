@@ -172,7 +172,7 @@ int main(int argc, char** argv) {
     std::set<std::string> loaded;
     loadModules(program, sourceDir, exeDir, loaded);
 
-    agn::parser::monomorphizeGenerics(program);
+    agn::parser::monomorphizeGenerics(program, targetOs, "x86_64", memMode);
 
     agn::parser::TypeChecker checker(targetOs, "x86_64", memMode);
     if (!checker.checkProgram(program)) {

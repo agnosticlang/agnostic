@@ -95,6 +95,7 @@ expect_llvm_run floats "examples/floats.agn" \
     "$(printf '12.566360\n4.000000\n-1.000000\n3.750000\n0.600000\n-1.500000\nx < y\n2.000000\n5.500000')"
 expect_llvm_run comptime_eval "examples/comptime_eval.agn" "$(printf '55\n10\ncombined true')"
 expect_llvm_run comptime_generics "examples/comptime_generics.agn" "$(printf '7\n10\n42\n5\n6')"
+expect_llvm_run comptime_generic_values "examples/comptime_generic_values.agn" "$(printf '15\n15\n42\n21')"
 
 expect_gcc_run closures "examples/closures.agn" "$(printf '1\n2\n3\n42')"
 expect_gcc_run structs "examples/structs.agn" "$(printf '25\n4\n5\n10')"
@@ -113,6 +114,7 @@ expect_gcc_run floats "examples/floats.agn" \
     "$(printf '12.566360\n4.000000\n-1.000000\n3.750000\n0.600000\n-1.500000\nx < y\n2.000000\n5.500000')"
 expect_gcc_run comptime_eval "examples/comptime_eval.agn" "$(printf '55\n10\ncombined true')"
 expect_gcc_run comptime_generics "examples/comptime_generics.agn" "$(printf '7\n10\n42\n5\n6')"
+expect_gcc_run comptime_generic_values "examples/comptime_generic_values.agn" "$(printf '15\n15\n42\n21')"
 
 expect_nvm_compile closures "examples/closures.agn" no            # function values/closures unsupported
 expect_nvm_compile structs "examples/structs.agn" yes
@@ -129,6 +131,7 @@ expect_nvm_compile generics "examples/generics.agn" yes
 expect_nvm_compile floats "examples/floats.agn" no   # float type unsupported
 expect_nvm_compile comptime_eval "examples/comptime_eval.agn" yes
 expect_nvm_compile comptime_generics "examples/comptime_generics.agn" yes
+expect_nvm_compile comptime_generic_values "examples/comptime_generic_values.agn" yes
 
 expect_llvm_run math_stdlib "scripts/testdata/math_test.agn" \
     "$(printf '7\n3\n1024\n9\n6\n12\n120\n1\n0\n10\n55\n1\n0\n55')"
@@ -167,6 +170,7 @@ expect_freebsd_compile generics "examples/generics.agn"
 expect_freebsd_compile floats "examples/floats.agn"
 expect_freebsd_compile comptime_eval "examples/comptime_eval.agn"
 expect_freebsd_compile comptime_generics "examples/comptime_generics.agn"
+expect_freebsd_compile comptime_generic_values "examples/comptime_generic_values.agn"
 expect_freebsd_compile math_stdlib "scripts/testdata/math_test.agn"
 expect_freebsd_compile strings_runtime "scripts/testdata/strings_runtime_test.agn"
 expect_freebsd_compile string_stdlib "scripts/testdata/string_test.agn"

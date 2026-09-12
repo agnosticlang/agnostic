@@ -1,0 +1,30 @@
+package main
+
+import "stdio"
+
+func identity(comptime T type, x T) T {
+    return x
+}
+
+func addN(comptime n int, x int) int {
+    return x + n
+}
+
+func wrapIdentity(comptime T type, x T) T {
+    return identity(T, x)
+}
+
+func scaleAndAdd(comptime T type, comptime factor int, x T) T {
+    return identity(T, x) * factor
+}
+
+func main() {
+    stdio.Println(addN(5, 10))
+    stdio.Println(addN(2 + 3, 10))
+
+    stdio.Println(wrapIdentity(int, 42))
+
+    stdio.Println(scaleAndAdd(int, 3, 7))
+
+    return
+}
