@@ -193,13 +193,18 @@ std::string Parser::parseFunctionTypeString() {
 std::vector<ast::Parameter> Parser::parseParamList() {
     std::vector<ast::Parameter> params;
     while (current().kind != TokenKind::RightParen) {
+        bool isComptime = false;
+        if (current().kind == TokenKind::Comptime) {
+            isComptime = true;
+            advance();
+        }
         if (current().kind != TokenKind::Identifier) error("expected parameter name");
         std::string name = current().text;
         advance();
         if (current().kind == TokenKind::Colon) advance();
         auto type = tryParseType();
         if (!type) error("expected parameter type");
-        params.push_back(ast::Parameter{name, *type});
+        params.push_back(ast::Parameter{name, *type, isComptime});
         if (current().kind == TokenKind::Comma) advance();
     }
     return params;

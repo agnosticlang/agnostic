@@ -1,0 +1,33 @@
+package main
+
+import "stdio"
+
+struct Point {
+    x i64,
+    y i64
+}
+
+func max(comptime T type, a T, b T) T {
+    if a > b {
+        return a
+    }
+    return b
+}
+
+func identity(comptime T type, x T) T {
+    return x
+}
+
+func main() {
+    stdio.Println(max(int, 3, 7))
+    stdio.Println(max(int, 10, 2))
+
+    stdio.Println(identity(int, 42))
+
+    var p Point = Point{x: 5, y: 6}
+    var p2 Point = identity(Point, p)
+    stdio.Println(p2.x)
+    stdio.Println(p2.y)
+
+    return
+}

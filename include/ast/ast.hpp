@@ -38,6 +38,7 @@ struct AsmPart {
 struct Parameter {
     std::string name;
     std::string type;
+    bool isComptime = false;
 };
 
 struct Expression;
