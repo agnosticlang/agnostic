@@ -83,8 +83,9 @@ stdio.Println(a.x)
 
 Structs can take type parameters, resolved at compile time by monomorphization: each distinct
 combination of type arguments used in the program (`Result<int,string>`, `Result<int,bool>`, ...)
-generates its own concrete struct behind the scenes. There are no generic functions and no pattern
-matching — just generic struct declarations and instantiations.
+generates its own concrete struct behind the scenes. There is no pattern matching, but there are generic
+*functions* — see [Generic functions](/en/comptime/#generic-functions) — via `comptime` parameters rather
+than this `<...>` syntax.
 
 ```agn
 struct Pair<A, B> {

@@ -71,5 +71,6 @@ Types are checked, not coerced across boundaries that would lose information sil
 ## Generics and pattern matching
 
 Generic *structs*, resolved at compile time by monomorphization, exist — see [Generic
-structs](/en/structs/#generic-structs). There are no generic *functions*, and there is no
-`match`/`switch` expression; branching is `if`/`else` only (see [Control Flow](/en/control-flow/)).
+structs](/en/structs/#generic-structs). Generic *functions* exist too, via `comptime` parameters instead
+of `<...>` syntax — see [Generic functions](/en/comptime/#generic-functions). There is no `match`/`switch`
+expression; branching is `if`/`else` only (see [Control Flow](/en/control-flow/)).
