@@ -1,5 +1,5 @@
 #!/bin/sh
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: GPL-3.0-or-later
 # SPDX-FileCopyrightText: 2026 AnmiTaliDev <anmitalidev@nuros.org>
 #
 # Regression suite for the compiler: compiles every example through the llvm,

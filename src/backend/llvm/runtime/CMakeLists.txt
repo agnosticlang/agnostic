@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: GPL-3.0-or-later
 # SPDX-FileCopyrightText: 2026 AnmiTaliDev <anmitalidev@nuros.org>
 add_library(agn_llvm_runtime STATIC stdio.cpp fileio.cpp strext.cpp)
 target_include_directories(agn_llvm_runtime PUBLIC ${PROJECT_SOURCE_DIR}/include)

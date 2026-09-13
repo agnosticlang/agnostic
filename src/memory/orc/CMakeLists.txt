@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: GPL-3.0-or-later
 # SPDX-FileCopyrightText: 2026 AnmiTaliDev <anmitalidev@nuros.org>
 add_library(agn_memory_orc STATIC orc.cpp rt_shim.cpp)
 target_include_directories(agn_memory_orc PUBLIC ${PROJECT_SOURCE_DIR}/include)

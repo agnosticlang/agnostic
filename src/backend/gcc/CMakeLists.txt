@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: GPL-3.0-or-later
 # SPDX-FileCopyrightText: 2026 AnmiTaliDev <anmitalidev@nuros.org>
 find_path(GCCJIT_INCLUDE_DIR NAMES libgccjit.h)
 find_library(GCCJIT_LIBRARY NAMES gccjit)

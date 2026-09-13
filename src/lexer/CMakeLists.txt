@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: GPL-3.0-or-later
 # SPDX-FileCopyrightText: 2026 AnmiTaliDev <anmitalidev@nuros.org>
 option(AGNOSTIC_BOOTSTRAP
        "Build with the plain C++ lexer (stage 0) instead of the self-hosted lexer.agn" OFF)

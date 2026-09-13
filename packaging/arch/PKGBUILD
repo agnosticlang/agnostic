@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 AnmiTaliDev <anmitalidev@nuros.org>
 # Maintainer: AnmiTaliDev <anmitalidev@nuros.org>
 pkgname=agnostic
 pkgver=${AGNOSTIC_VERSION:-0.0.0}
@@ -5,7 +7,7 @@ pkgrel=1
 pkgdesc="The Agnostic programming language compiler"
 arch=('x86_64')
 url="https://github.com/agnosticlang/agnostic"
-license=('Apache-2.0')
+license=('GPL-3.0-or-later' 'Apache-2.0')
 depends=('llvm-libs' 'libgccjit')
 makedepends=('cmake' 'llvm' 'clang' 'libgccjit')
 options=('staticlibs' '!strip')

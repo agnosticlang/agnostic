@@ -34,4 +34,9 @@ The original authors are [Zennix](https://github.com/z3nnix/) and [Noxzion](http
 
 ### License
 
-The Agnostic compiler and standard library are licensed under the Apache 2.0 License.
+The compiler (`src/`, `include/`, `old/`, build/packaging scripts) is licensed under
+[GPL-3.0-or-later](LICENSES/GPL-3.0-or-later.txt), because the `gcc` backend links against `libgccjit`
+(GPLv3). The standard library, examples, and test fixtures (`stdlib/`, `examples/`,
+`scripts/testdata/`) are licensed under [Apache-2.0](LICENSES/Apache-2.0.txt) — programs you compile
+with Agnostic are not affected by the compiler's license. See each file's `SPDX-License-Identifier`
+header for which license applies to it.
