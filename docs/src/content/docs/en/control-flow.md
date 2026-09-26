@@ -13,7 +13,7 @@ if x > 0 {
 }
 ```
 
-Braces are required. There is no `else if`; an `else` branch that starts with another `if` must nest it in its own block:
+Braces are required. The condition must be a `bool`; to test a number, compare it (`if n != 0`). There is no `else if`; an `else` branch that starts with another `if` must nest it in its own block:
 
 ```agn
 if x % 15 == 0 {

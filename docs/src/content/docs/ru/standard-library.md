@@ -25,7 +25,7 @@ description: result, stdio, math, string, os и novaria.
 | `ReadLine` | `(buffer *u8, maxlen int) int` | читает строку в `buffer`, возвращает число байт |
 | `Flush` | `()` | ничего не делает; вывод небуферизован |
 
-`Print` и `Println` принимают только `int`; передача `string` — ошибка типов, используйте `PrintStr`/`PrintlnStr`.
+`Print` и `Println` принимают только `int`; передача `string` или `bool` является ошибкой типов, используйте `PrintStr`/`PrintlnStr` или `PrintBool`/`PrintlnBool`.
 
 `ReadInt`, `ReadChar` и `ReadLine` — ошибки компиляции под `--backend=nvm`. У stdin в ядре Novaria нет рабочего пути чтения (`/dev/stdin` имеет нулевую функцию чтения, `/dev/tty` возвращается немедленно, не заполняя буфер), так что правильного поведения сгенерировать нельзя; компилятор отказывается компилировать такой вызов вместо того, чтобы выдать программу, которая зависает или читает мусор.
 

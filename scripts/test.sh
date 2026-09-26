@@ -78,6 +78,26 @@ expect_freebsd_compile() {
     echo "PASS: $name (freebsd, compile-only; llvm+gcc execution verified manually on a FreeBSD VM, not in CI)"
 }
 
+expect_reject() {
+    name=$1
+    path=$2
+    expected_error=$3
+    out="$WORK_DIR/${name}_reject"
+
+    if "$AGNOSTIC" "$path" --backend=llvm --output="$out" >"$out.log" 2>&1; then
+        echo "FAIL: $name expected a compile error, but compiled"
+        fail=1
+        return
+    fi
+    if ! grep -qF "$expected_error" "$out.log"; then
+        echo "FAIL: $name error message mismatch"
+        echo "  expected: $expected_error"
+        fail=1
+        return
+    fi
+    echo "PASS: $name (reject)"
+}
+
 expect_llvm_run closures "examples/closures.agn" "$(printf '1\n2\n3\n42')"
 expect_llvm_run structs "examples/structs.agn" "$(printf '25\n4\n5\n10')"
 expect_llvm_run comptime_platform "examples/comptime_platform.agn" "1"
@@ -179,5 +199,15 @@ expect_freebsd_compile math_stdlib "scripts/testdata/math_test.agn"
 expect_freebsd_compile strings_runtime "scripts/testdata/strings_runtime_test.agn"
 expect_freebsd_compile string_stdlib "scripts/testdata/string_test.agn"
 expect_freebsd_compile os_string "scripts/testdata/os_string_test.agn"
+
+expect_reject bool_to_int "scripts/testdata/reject/bool_to_int.agn" "declared as i64, initialized with bool"
+expect_reject int_to_bool "scripts/testdata/reject/int_to_bool.agn" "declared as bool, initialized with i64"
+expect_reject ptr_to_int "scripts/testdata/reject/ptr_to_int.agn" "declared as i64, initialized with *i64"
+expect_reject int_to_ptr "scripts/testdata/reject/int_to_ptr.agn" "declared as *i64, initialized with i64"
+expect_reject ptr_store "scripts/testdata/reject/ptr_store.agn" "pointer assignment: expected i64, got bool"
+expect_reject int_condition "scripts/testdata/reject/int_condition.agn" "condition must be bool, got i64"
+expect_reject bool_int_compare "scripts/testdata/reject/bool_int_compare.agn" "cannot compare bool with i64"
+expect_reject cast_to_bool "scripts/testdata/reject/cast_to_bool.agn" "cannot cast i64 to bool"
+expect_reject ptr_cast_width "scripts/testdata/reject/ptr_cast_width.agn" "cannot cast *i64 to i32"
 
 exit $fail

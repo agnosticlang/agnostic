@@ -1,0 +1,11 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 AnmiTaliDev <anmitalidev@nuros.org>
+
+package main
+
+func main() {
+    var x int = 5
+    if x {
+        x = 0
+    }
+}

@@ -43,14 +43,14 @@ bool Type::operator==(const Type& other) const {
 bool Type::canAssignTo(const Type& other) const {
     if (*this == other) return true;
     if (isNumeric() && other.isNumeric()) return true;
-    if (kind == TypeKind::Ptr && other.isNumeric()) return true;
     if (kind == TypeKind::Ptr && other.kind == TypeKind::Ptr && pointee->kind == TypeKind::Array &&
         *pointee->elementType == *other.pointee) {
         return true;
     }
-    if (kind == TypeKind::Ptr && other.kind == TypeKind::String) return true;
-    if (kind == TypeKind::Bool && other.isNumeric()) return true;
-    if (other.kind == TypeKind::Bool && isNumeric()) return true;
+    if (kind == TypeKind::Ptr && other.kind == TypeKind::String) {
+        const Type& byte = pointee->kind == TypeKind::Array ? *pointee->elementType : *pointee;
+        if (byte.kind == TypeKind::I8 || byte.kind == TypeKind::U8) return true;
+    }
     if (kind == TypeKind::Unknown || other.kind == TypeKind::Unknown) return true;
     return false;
 }
@@ -67,8 +67,9 @@ bool Type::canCastTo(const Type& other) const {
     return (kind == TypeKind::Ptr && toWord) || (fromWord && other.kind == TypeKind::Ptr);
 }
 
-static std::string invalidCastHint(const Type& from, const Type& to) {
+static std::string conversionHint(const Type& from, const Type& to) {
     if (from.isNumeric() && to.kind == TypeKind::Bool) return " (compare instead, e.g. 'x != 0')";
+    if (from.canCastTo(to)) return " (convert explicitly with 'as " + to.toString() + "')";
     if (from.kind == TypeKind::Bool && to.isFloat()) return " (cast to an integer type first)";
     if ((from.kind == TypeKind::Ptr && to.isInteger()) || (from.isInteger() && to.kind == TypeKind::Ptr)) {
         return " (pointers convert only to and from i64 or u64)";
@@ -194,6 +195,11 @@ std::optional<Type> TypeChecker::lookupVar(const std::string& name) {
 
 void TypeChecker::declareVar(const std::string& name, const Type& type) {
     scopeStack_.back().vars[name] = type;
+}
+
+void TypeChecker::expectBool(const Type& type, const std::string& what) {
+    if (type.kind == TypeKind::Bool || type.kind == TypeKind::Unknown) return;
+    addError(what + " must be bool, got " + type.toString() + conversionHint(type, Type{TypeKind::Bool}));
 }
 
 void TypeChecker::addError(const std::string& message) {
@@ -335,9 +341,9 @@ void TypeChecker::checkStatement(ast::Statement& stmt) {
         Type declared = n->varType.empty() ? Type{TypeKind::Unknown} : resolveType(n->varType);
         if (n->value) {
             Type exprType = checkExpression(*n->value);
-            if (!declared.canAssignTo(exprType) && !exprType.canAssignTo(declared)) {
+            if (!exprType.canAssignTo(declared)) {
                 addError("type mismatch in variable '" + n->name + "': declared as " + declared.toString() +
-                          ", initialized with " + exprType.toString());
+                          ", initialized with " + exprType.toString() + conversionHint(exprType, declared));
             }
             declareVar(n->name, declared.kind == TypeKind::Unknown ? exprType : declared);
         } else {
@@ -357,7 +363,7 @@ void TypeChecker::checkStatement(ast::Statement& stmt) {
         if (!varType) addError("variable '" + n->name + "' not declared" + didYouMean(n->name, visibleVarNames()));
         else if (!exprType.canAssignTo(*varType)) {
             addError("type mismatch in assignment to '" + n->name + "': expected " + varType->toString() +
-                      ", got " + exprType.toString());
+                      ", got " + exprType.toString() + conversionHint(exprType, *varType));
         }
         return;
     }
@@ -370,7 +376,7 @@ void TypeChecker::checkStatement(ast::Statement& stmt) {
         Type valueType = checkExpression(n->value);
         if (!valueType.canAssignTo(*varType->elementType)) {
             addError("type mismatch in array assignment: expected " + varType->elementType->toString() +
-                      ", got " + valueType.toString());
+                      ", got " + valueType.toString() + conversionHint(valueType, *varType->elementType));
         }
         return;
     }
@@ -379,7 +385,11 @@ void TypeChecker::checkStatement(ast::Statement& stmt) {
         if (targetType.kind != TypeKind::Ptr && targetType.kind != TypeKind::Unknown) {
             addError("pointer assignment requires a pointer type, got " + targetType.toString());
         }
-        checkExpression(n->value);
+        Type valueType = checkExpression(n->value);
+        if (targetType.kind == TypeKind::Ptr && !valueType.canAssignTo(*targetType.pointee)) {
+            addError("type mismatch in pointer assignment: expected " + targetType.pointee->toString() +
+                      ", got " + valueType.toString() + conversionHint(valueType, *targetType.pointee));
+        }
         return;
     }
     if (auto* n = std::get_if<ast::FieldAssignmentStmt>(&stmt.node)) {
@@ -400,13 +410,13 @@ void TypeChecker::checkStatement(ast::Statement& stmt) {
         return;
     }
     if (auto* n = std::get_if<ast::IfStmt>(&stmt.node)) {
-        checkExpression(n->condition);
+        expectBool(checkExpression(n->condition), "condition");
         for (auto& s : n->thenBody) checkStatement(s);
         if (n->elseBody) for (auto& s : *n->elseBody) checkStatement(s);
         return;
     }
     if (auto* n = std::get_if<ast::ForStmt>(&stmt.node)) {
-        if (n->condition) checkExpression(*n->condition);
+        if (n->condition) expectBool(checkExpression(*n->condition), "loop condition");
         loopDepth_++;
         for (auto& s : n->body) checkStatement(s);
         loopDepth_--;
@@ -425,7 +435,8 @@ void TypeChecker::checkStatement(ast::Statement& stmt) {
         if (n->value) {
             Type got = checkExpression(*n->value);
             if (!got.canAssignTo(expected)) {
-                addError("return type mismatch: expected " + expected.toString() + ", got " + got.toString());
+                addError("return type mismatch: expected " + expected.toString() + ", got " + got.toString() +
+                          conversionHint(got, expected));
             }
         } else if (expected.kind != TypeKind::Void) {
             addError("function must return a value of type " + expected.toString());
@@ -533,9 +544,24 @@ Type TypeChecker::checkExpression(ast::Expression& expr) {
                 return l;
             case ast::BinaryOp::Concat:
                 return Type{TypeKind::String};
-            default:
+            case ast::BinaryOp::And: case ast::BinaryOp::Or: {
+                std::string op = n->op == ast::BinaryOp::And ? "'&&'" : "'||'";
+                expectBool(l, "left operand of " + op);
+                expectBool(r, "right operand of " + op);
+                return Type{TypeKind::Bool};
+            }
+            case ast::BinaryOp::Equal: case ast::BinaryOp::NotEqual:
+                if (!l.canAssignTo(r) && !r.canAssignTo(l)) {
+                    addError("cannot compare " + l.toString() + " with " + r.toString());
+                }
+                return Type{TypeKind::Bool};
+            case ast::BinaryOp::Less: case ast::BinaryOp::LessEqual:
+            case ast::BinaryOp::Greater: case ast::BinaryOp::GreaterEqual:
+                if (l.kind != TypeKind::Unknown && !l.isNumeric()) addError("left operand must be numeric, got " + l.toString());
+                if (r.kind != TypeKind::Unknown && !r.isNumeric()) addError("right operand must be numeric, got " + r.toString());
                 return Type{TypeKind::Bool};
         }
+        return Type{TypeKind::Unknown};
     }
 
     if (auto* n = std::get_if<ast::UnaryExpr>(&expr.node)) {
@@ -544,6 +570,7 @@ Type TypeChecker::checkExpression(ast::Expression& expr) {
             if (!operand.isNumeric()) addError("negation operand must be numeric, got " + operand.toString());
             return operand;
         }
+        expectBool(operand, "operand of '!'");
         return Type{TypeKind::Bool};
     }
 
@@ -565,7 +592,8 @@ Type TypeChecker::checkExpression(ast::Expression& expr) {
                 Type argType = checkExpression(n->args[i]);
                 if (!argType.canAssignTo(sig.params[i].second)) {
                     addError("argument " + std::to_string(i) + " of '" + n->function + "': expected " +
-                              sig.params[i].second.toString() + ", got " + argType.toString());
+                              sig.params[i].second.toString() + ", got " + argType.toString() +
+                              conversionHint(argType, sig.params[i].second));
                 }
             }
             return sig.returnType;
@@ -663,7 +691,8 @@ Type TypeChecker::checkExpression(ast::Expression& expr) {
             Type argType = checkExpression(n->args[i]);
             if (!argType.canAssignTo(sig.params[i].second)) {
                 addError("argument " + std::to_string(i) + " of '" + key + "': expected " +
-                          sig.params[i].second.toString() + ", got " + argType.toString());
+                          sig.params[i].second.toString() + ", got " + argType.toString() +
+                          conversionHint(argType, sig.params[i].second));
             }
         }
         return sig.returnType;
@@ -712,7 +741,7 @@ Type TypeChecker::checkExpression(ast::Expression& expr) {
             return to;
         }
         if (!from.canCastTo(to)) {
-            addError("cannot cast " + from.toString() + " to " + to.toString() + invalidCastHint(from, to));
+            addError("cannot cast " + from.toString() + " to " + to.toString() + conversionHint(from, to));
         }
         return to;
     }

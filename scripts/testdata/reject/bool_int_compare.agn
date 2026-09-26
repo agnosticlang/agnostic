@@ -1,0 +1,9 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 AnmiTaliDev <anmitalidev@nuros.org>
+
+package main
+
+func main() {
+    var b bool = true
+    var same bool = b == 1
+}

@@ -100,11 +100,24 @@ var addr u64 = &big as u64
 | pointer | `i64` or `u64` | the address |
 | `i64` or `u64` | pointer | the address |
 
+Any other cast is a compile error. There is no cast from a number to `bool`; compare instead (`x != 0`).
+
 `as` binds tighter than the binary operators and looser than the unary ones: `-x as u8` is `(-x) as u8`, and `a + b as i64` is `a + (b as i64)`. Under `--backend=nvm`, casts to `f64` and to pointer types are compile errors.
 
 ## Type checking rules
 
-Types are checked, not coerced across boundaries that would lose information silently. Assignment between different integer widths is permitted where the typechecker's `canAssignTo` rule allows it (unsigned and signed integer kinds interconvert freely at the type-check level; the emitted code truncates or extends as needed for the target width). There is no implicit conversion between `string` and any numeric type.
+A value converts implicitly only in these cases:
+
+- between numeric types (`i64`, `i32`, `i8`, `u64`, `u32`, `u8`, `f64`); the emitted code truncates or extends the value to the target width;
+- from `*[N]T` to `*T`;
+- from `*u8`, `*i8`, `*[N]u8`, or `*[N]i8` to `string`.
+
+Any other conversion needs an explicit [cast](#casts) or is a compile error. `bool` and numbers do not convert into each other, and pointers do not convert to or from numbers. The conditions of `if` and `for` and the operands of `!`, `&&`, and `||` must be `bool`. `==` and `!=` need operands of compatible types, and `<`, `<=`, `>`, `>=` need numeric operands. The error message suggests the cast or comparison to write:
+
+```
+error: type mismatch in variable 'n': declared as i64, initialized with bool (convert explicitly with 'as i64')
+error: condition must be bool, got i64 (compare instead, e.g. 'x != 0')
+```
 
 ## Generics and pattern matching
 

@@ -25,7 +25,7 @@ Every function in these modules is a compiler intrinsic: the body written in the
 | `ReadLine` | `(buffer *u8, maxlen int) int` | reads a line into `buffer`, returns the byte count |
 | `Flush` | `()` | no-op; output is unbuffered |
 
-`Print` and `Println` only accept `int`; passing a `string` is a type error, use `PrintStr`/`PrintlnStr`.
+`Print` and `Println` only accept `int`; passing a `string` or a `bool` is a type error, use `PrintStr`/`PrintlnStr` or `PrintBool`/`PrintlnBool`.
 
 `ReadInt`, `ReadChar`, and `ReadLine` are compile errors under `--backend=nvm`. The Novaria kernel's stdin file descriptor has no working read handler (`/dev/stdin` has a null read function, `/dev/tty` returns immediately without filling the buffer), so there is no correct behavior to generate; the compiler refuses to compile the call instead of producing a program that hangs or reads garbage.
 

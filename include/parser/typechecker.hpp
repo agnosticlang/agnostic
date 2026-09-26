@@ -85,6 +85,7 @@ private:
     std::optional<Type> lookupVar(const std::string& name);
     void declareVar(const std::string& name, const Type& type);
 
+    void expectBool(const Type& type, const std::string& what);
     void addError(const std::string& message);
     std::string didYouMean(const std::string& name, const std::vector<std::string>& candidates) const;
     std::vector<std::string> visibleVarNames() const;
