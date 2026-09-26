@@ -38,6 +38,30 @@ expect_run() {
 }
 
 expect_llvm_run() { expect_run llvm "$1" "$2" "$3"; }
+
+expect_mem_run() {
+    mem=$1
+    name=$2
+    path=$3
+    expected_stdout=$4
+    out="$WORK_DIR/${name}_mem_${mem}"
+
+    if ! "$AGNOSTIC" "$path" --mem="$mem" --output="$out" >/dev/null 2>&1; then
+        echo "FAIL: $name (mem=$mem) did not compile"
+        fail=1
+        return
+    fi
+
+    actual_stdout="$(ulimit -v 262144; "$out")"
+    if [ "$actual_stdout" != "$expected_stdout" ]; then
+        echo "FAIL: $name (mem=$mem) stdout mismatch"
+        echo "  expected: $expected_stdout"
+        echo "  actual:   $actual_stdout"
+        fail=1
+        return
+    fi
+    echo "PASS: $name (mem=$mem)"
+}
 expect_gcc_run() { expect_run gcc "$1" "$2" "$3"; }
 
 expect_hurd_compile() {
@@ -209,6 +233,17 @@ expect_hurd_compile math_stdlib "scripts/testdata/math_test.agn"
 expect_hurd_compile strings_runtime "scripts/testdata/strings_runtime_test.agn"
 expect_hurd_compile string_stdlib "scripts/testdata/string_test.agn"
 expect_hurd_compile os_string "scripts/testdata/os_string_test.agn"
+
+expect_mem_run arc alloc_stress "scripts/testdata/alloc_stress_test.agn" "400000"
+expect_mem_run manual alloc_stress "scripts/testdata/alloc_stress_test.agn" "400000"
+expect_mem_run orc alloc_stress "scripts/testdata/alloc_stress_test.agn" "400000"
+expect_mem_run manual closures "examples/closures.agn" "$(printf '1\n2\n3\n42')"
+expect_mem_run manual structs "examples/structs.agn" "$(printf '25\n4\n5\n10')"
+expect_mem_run orc structs "examples/structs.agn" "$(printf '25\n4\n5\n10')"
+expect_mem_run manual strings_runtime "scripts/testdata/strings_runtime_test.agn" \
+    "$(printf 'foobar\nhello Agnostic, value=00042')"
+expect_mem_run orc strings_runtime "scripts/testdata/strings_runtime_test.agn" \
+    "$(printf 'foobar\nhello Agnostic, value=00042')"
 
 expect_windows_run closures "examples/closures.agn" "$(printf '1\n2\n3\n42')"
 expect_windows_run structs "examples/structs.agn" "$(printf '25\n4\n5\n10')"
