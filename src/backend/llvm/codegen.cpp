@@ -629,6 +629,11 @@ struct Codegen::Impl {
             rt("agn_rt_println_str", voidTy, {ptrTy}, {genExpr(args[0]).value});
             return TypedValue{llvm::ConstantInt::get(i64Ty, 0), Type{TypeKind::Void}};
         }
+        if (member == "PrintBool" || member == "PrintlnBool") {
+            rt(member == "PrintlnBool" ? "agn_rt_println_bool" : "agn_rt_print_bool", voidTy, {i64Ty},
+               {toI64(genExpr(args[0]))});
+            return TypedValue{llvm::ConstantInt::get(i64Ty, 0), Type{TypeKind::Void}};
+        }
         if (member == "PrintChar") {
             rt("agn_rt_print_char", voidTy, {i64Ty}, {toI64(genExpr(args[0]))});
             return TypedValue{llvm::ConstantInt::get(i64Ty, 0), Type{TypeKind::Void}};

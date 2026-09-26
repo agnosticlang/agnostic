@@ -12,21 +12,21 @@ func main() {
     stdio.PrintlnStr(string.toLower("WORLD"))
 
     var idx Option<int> = string.indexOf("hello world", "world")
-    stdio.Println(idx.some)
+    stdio.PrintlnBool(idx.some)
     stdio.Println(idx.value)
 
     var idxMiss Option<int> = string.indexOf("hello world", "xyz")
-    stdio.Println(idxMiss.some)
+    stdio.PrintlnBool(idxMiss.some)
 
-    stdio.Println(string.contains("hello world", "lo wo"))
-    stdio.Println(string.contains("hello world", "xyz"))
-    stdio.Println(string.startsWith("hello", "he"))
-    stdio.Println(string.startsWith("hello", "lo"))
-    stdio.Println(string.endsWith("hello", "lo"))
-    stdio.Println(string.endsWith("hello", "he"))
+    stdio.PrintlnBool(string.contains("hello world", "lo wo"))
+    stdio.PrintlnBool(string.contains("hello world", "xyz"))
+    stdio.PrintlnBool(string.startsWith("hello", "he"))
+    stdio.PrintlnBool(string.startsWith("hello", "lo"))
+    stdio.PrintlnBool(string.endsWith("hello", "lo"))
+    stdio.PrintlnBool(string.endsWith("hello", "he"))
 
     var ch Option<int> = string.charAt("hello", 1)
-    stdio.Println(ch.some)
+    stdio.PrintlnBool(ch.some)
     stdio.Println(ch.value)
 
     stdio.PrintlnStr(string.substr("hello world", 6, 5))
@@ -44,6 +44,6 @@ func main() {
     var buf [16]u8
     var n Option<int> = os.ReadFd(rfd.value, &buf, 15)
     os.Close(rfd.value)
-    stdio.Println(n.some)
+    stdio.PrintlnBool(n.some)
     stdio.Println(n.value)
 }

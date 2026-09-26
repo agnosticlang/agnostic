@@ -11,6 +11,6 @@ fn main() {
     stdio.Println(string.compare("abc", "abd"))
     stdio.Println(string.compare("abd", "abc"))
     stdio.PrintlnStr(string.concat("foo", "bar"))
-    stdio.Println(string.is_empty(""))
-    stdio.Println(string.is_empty("hi"))
+    stdio.PrintlnBool(string.is_empty(""))
+    stdio.PrintlnBool(string.is_empty("hi"))
 }

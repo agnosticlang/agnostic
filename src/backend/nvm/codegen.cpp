@@ -322,6 +322,21 @@ void NVMCodeGen::generateStdioCall(const std::string& member, std::vector<ast::E
             writeExprAsString(args[0]);
             writeHeapString("\n");
         }
+    } else if (member == "PrintBool" || member == "PrintlnBool") {
+        if (!args.empty()) {
+            std::string falseLbl = generateLabel("print_bool_false");
+            std::string endLbl = generateLabel("print_bool_end");
+            generateExpression(args[0]);
+            emitByte(JZ);
+            emitJumpRef(falseLbl);
+            writeHeapString("true");
+            emitByte(JMP);
+            emitJumpRef(endLbl);
+            addLabel(falseLbl);
+            writeHeapString("false");
+            addLabel(endLbl);
+            if (member == "PrintlnBool") writeHeapString("\n");
+        }
     } else if (member == "PrintChar") {
         if (!args.empty()) {
             generateExpression(args[0]);

@@ -15,6 +15,6 @@ func main() {
     stdio.Println(string.compare("banana", "apple"))
     stdio.Println(string.compare("same", "same"))
 
-    stdio.Println(string.is_empty(""))
-    stdio.Println(string.is_empty(greeting))
+    stdio.PrintlnBool(string.is_empty(""))
+    stdio.PrintlnBool(string.is_empty(greeting))
 }

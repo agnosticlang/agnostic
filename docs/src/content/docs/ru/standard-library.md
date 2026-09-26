@@ -17,6 +17,8 @@ description: result, stdio, math, string, os и novaria.
 | `Println` | `(value int)` | пишет десятичное целое и перевод строки |
 | `PrintStr` | `(text string)` | пишет строку, без перевода строки |
 | `PrintlnStr` | `(text string)` | пишет строку и перевод строки |
+| `PrintBool` | `(value bool)` | пишет `true` или `false`, без перевода строки |
+| `PrintlnBool` | `(value bool)` | пишет `true` или `false` и перевод строки |
 | `PrintChar` | `(ch int)` | пишет один байт |
 | `ReadInt` | `() int` | читает десятичное целое из stdin |
 | `ReadChar` | `() int` | читает один байт из stdin |

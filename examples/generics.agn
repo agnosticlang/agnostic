@@ -25,17 +25,17 @@ func findFirst(target int) Option<int> {
 
 func main() {
     var r1 Result<int,string> = safeDivide(10, 2)
-    stdio.Println(r1.ok)
+    stdio.PrintlnBool(r1.ok)
     stdio.Println(r1.value)
 
     var r2 Result<int,string> = safeDivide(10, 0)
-    stdio.Println(r2.ok)
+    stdio.PrintlnBool(r2.ok)
     stdio.PrintlnStr(r2.err)
 
     var o1 Option<int> = findFirst(3)
-    stdio.Println(o1.some)
+    stdio.PrintlnBool(o1.some)
     stdio.Println(o1.value)
 
     var o2 Option<int> = findFirst(9)
-    stdio.Println(o2.some)
+    stdio.PrintlnBool(o2.some)
 }

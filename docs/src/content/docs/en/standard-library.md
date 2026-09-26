@@ -17,6 +17,8 @@ Every function in these modules is a compiler intrinsic: the body written in the
 | `Println` | `(value int)` | writes a decimal integer and a newline |
 | `PrintStr` | `(text string)` | writes a string, no newline |
 | `PrintlnStr` | `(text string)` | writes a string and a newline |
+| `PrintBool` | `(value bool)` | writes `true` or `false`, no newline |
+| `PrintlnBool` | `(value bool)` | writes `true` or `false` and a newline |
 | `PrintChar` | `(ch int)` | writes one byte |
 | `ReadInt` | `() int` | reads a decimal integer from stdin |
 | `ReadChar` | `() int` | reads one byte from stdin |

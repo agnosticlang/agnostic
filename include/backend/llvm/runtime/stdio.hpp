@@ -6,6 +6,8 @@ extern "C" {
 
 void agn_rt_print_int(long value);
 void agn_rt_println_int(long value);
+void agn_rt_print_bool(long value);
+void agn_rt_println_bool(long value);
 void agn_rt_print_str(const char* s);
 void agn_rt_println_str(const char* s);
 void agn_rt_print_char(long c);

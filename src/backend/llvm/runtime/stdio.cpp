@@ -120,6 +120,16 @@ extern "C" void agn_rt_println_int(long value) {
     writeAll("\n", 1);
 }
 
+extern "C" void agn_rt_print_bool(long value) {
+    if (value) writeAll("true", 4);
+    else writeAll("false", 5);
+}
+
+extern "C" void agn_rt_println_bool(long value) {
+    agn_rt_print_bool(value);
+    writeAll("\n", 1);
+}
+
 extern "C" void agn_rt_print_str(const char* s) { writeAll(s, agn_rt_strlen(s)); }
 
 extern "C" void agn_rt_println_str(const char* s) {

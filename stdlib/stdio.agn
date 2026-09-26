@@ -19,6 +19,14 @@ pub fn PrintlnStr(text string) {
     return
 }
 
+pub fn PrintBool(value bool) {
+    return
+}
+
+pub fn PrintlnBool(value bool) {
+    return
+}
+
 pub fn PrintChar(ch int) {
     return
 }
