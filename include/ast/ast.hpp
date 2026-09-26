@@ -105,8 +105,6 @@ struct CastExpr {
     std::string targetType;
 };
 
-struct EvalExpr { std::unique_ptr<Expression> instruction; };
-
 struct FieldAccessExpr {
     std::unique_ptr<Expression> object;
     std::string field;
@@ -128,7 +126,7 @@ struct Expression {
     std::variant<
         NumberExpr, FloatExpr, BoolExpr, StringExpr, TemplateStringExpr, IdentifierExpr,
         BinaryExpr, UnaryExpr, CallExpr, MethodCallExpr, ArrayAccessExpr,
-        StringIndexExpr, AddressOfExpr, DerefExpr, EvalExpr, FieldAccessExpr,
+        StringIndexExpr, AddressOfExpr, DerefExpr, FieldAccessExpr,
         FunctionLiteralExpr, StructLiteralExpr, CastExpr> node;
 };
 

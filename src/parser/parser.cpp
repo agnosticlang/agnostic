@@ -958,10 +958,6 @@ ast::Expression Parser::parsePrimary() {
                     if (current().kind == TokenKind::Comma) advance();
                 }
                 expect(TokenKind::RightParen);
-
-                if (name == "eval" && args.size() == 1) {
-                    return ast::Expression{ast::EvalExpr{box(std::move(args[0]))}};
-                }
                 return ast::Expression{ast::CallExpr{name, std::move(args)}};
             }
 

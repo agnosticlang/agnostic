@@ -773,11 +773,6 @@ Type TypeChecker::checkExpression(ast::Expression& expr) {
         return to;
     }
 
-    if (auto* n = std::get_if<ast::EvalExpr>(&expr.node)) {
-        checkExpression(*n->instruction);
-        return Type{TypeKind::Unknown};
-    }
-
     if (auto* n = std::get_if<ast::FieldAccessExpr>(&expr.node)) {
         Type objType = checkExpression(*n->object);
         if (objType.kind != TypeKind::Struct) {

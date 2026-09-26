@@ -213,7 +213,8 @@ int main(int argc, char** argv) {
         else if (memMode == "orc") mode = agn::backend::gcc::MemMode::Orc;
 
         agn::backend::gcc::GccBackend codegen(checker, mode, fs::path(sourceFile).filename().string());
-        if (!codegen.generate(program, codegenError) || !codegen.emitObjectFile(objPath, codegenError)) {
+        codegen.generate(program);
+        if (!codegen.emitObjectFile(objPath, codegenError)) {
             std::cerr << "error: " << codegenError << "\n";
             return 1;
         }
@@ -223,7 +224,8 @@ int main(int argc, char** argv) {
         else if (memMode == "orc") mode = agn::backend::llvm_backend::MemMode::Orc;
 
         agn::backend::llvm_backend::Codegen codegen(checker, mode, fs::path(sourceFile).filename().string());
-        if (!codegen.generate(program, codegenError) || !codegen.emitObjectFile(objPath, codegenError)) {
+        codegen.generate(program);
+        if (!codegen.emitObjectFile(objPath, codegenError)) {
             std::cerr << "error: " << codegenError << "\n";
             return 1;
         }

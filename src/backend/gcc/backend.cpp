@@ -5,7 +5,6 @@
 #include <libgccjit.h>
 
 #include <algorithm>
-#include <stdexcept>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
@@ -299,8 +298,6 @@ struct GccBackend::Impl {
             collectCapturedExpr(*n->operand, out);
         } else if (auto* n = std::get_if<ast::CastExpr>(&expr.node)) {
             collectCapturedExpr(*n->operand, out);
-        } else if (auto* n = std::get_if<ast::EvalExpr>(&expr.node)) {
-            collectCapturedExpr(*n->instruction, out);
         } else if (auto* n = std::get_if<ast::FieldAccessExpr>(&expr.node)) {
             collectCapturedExpr(*n->object, out);
         } else if (auto* n = std::get_if<ast::FunctionLiteralExpr>(&expr.node)) {
@@ -1023,10 +1020,6 @@ struct GccBackend::Impl {
             Type target = checker.resolveTypeString(n->targetType);
             return TypedValue{castValue(v, target), target};
         }
-        if (std::get_if<ast::EvalExpr>(&expr.node)) {
-            throw std::runtime_error("'eval' is not supported by the gcc backend "
-                                     "(it only has meaning as an nvm inline-asm escape hatch)");
-        }
         if (auto* n = std::get_if<ast::FieldAccessExpr>(&expr.node)) {
             auto* id = std::get_if<ast::IdentifierExpr>(&n->object->node);
             auto& lv = locals.at(id->name);
@@ -1361,16 +1354,10 @@ GccBackend::GccBackend(agn::parser::TypeChecker& checker, MemMode mode, const st
 
 GccBackend::~GccBackend() = default;
 
-bool GccBackend::generate(agn::ast::Program& program, std::string& errorOut) {
-    try {
-        impl_->declareStructs();
-        impl_->declareFunctions(program);
-        impl_->defineAllFunctionBodies(program);
-    } catch (const std::runtime_error& e) {
-        errorOut = e.what();
-        return false;
-    }
-    return true;
+void GccBackend::generate(agn::ast::Program& program) {
+    impl_->declareStructs();
+    impl_->declareFunctions(program);
+    impl_->defineAllFunctionBodies(program);
 }
 
 bool GccBackend::emitObjectFile(const std::string& path, std::string& errorOut) {
