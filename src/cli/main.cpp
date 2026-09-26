@@ -258,15 +258,6 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    if (targetOs == "freebsd") {
-        std::fstream elf(finalOutput, std::ios::in | std::ios::out | std::ios::binary);
-        if (elf) {
-            elf.seekp(7);
-            char osabi = 9;
-            elf.write(&osabi, 1);
-        }
-    }
-
     std::remove(objPath.c_str());
     std::cout << "Compilation successful: " << finalOutput << "\n";
     return 0;

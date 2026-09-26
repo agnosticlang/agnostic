@@ -35,7 +35,7 @@ agnostic <source.agn> [options]
 
 ## target-os
 
-Реальная реализация платформы есть для `linux` и `freebsd`. `windows` и `hurd` — нереализованные заглушки, завершаются ошибкой «only --target-os=linux and --target-os=freebsd have a real platform/runtime implementation». Бэкенд `freebsd` линкует сырые amd64-сисколлы напрямую (без libc) и брендирует итоговый статический ELF полем `EI_OSABI=ELFOSABI_FREEBSD`, как это делает `brandelf -t FreeBSD`. Проверено реальным запуском скомпилированных бинарников с обоих бэкендов, `llvm` и `gcc` (включая замыкания и структуры, которые задействуют аллокатор кучи), на настоящей VM с FreeBSD 15.1.
+Реальная реализация платформы есть для `linux` и `freebsd`. `windows` и `hurd` — нереализованные заглушки, завершаются ошибкой «only --target-os=linux and --target-os=freebsd have a real platform/runtime implementation». Бэкенд `freebsd` линкует сырые amd64-сисколлы напрямую (без libc) и помечает итоговый статический ELF как бинарник FreeBSD с помощью ELF-заметки ABI FreeBSD (`.note.tag`, `NT_FREEBSD_ABI_TAG`, версия ОС 14.0), той же, что добавляют стартовые файлы самой FreeBSD. Заметка приходит из стартового кода FreeBSD, поэтому работает с любым линкером и с обоими бэкендами. Проверено реальным запуском скомпилированных бинарников с обоих бэкендов, `llvm` и `gcc` (включая замыкания и структуры, которые задействуют аллокатор кучи), на настоящей VM с FreeBSD 15.1.
 
 ## Диагностика
 

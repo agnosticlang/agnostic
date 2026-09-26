@@ -22,4 +22,17 @@ agn_argc: .quad 0
 .global agn_argv
 agn_argv: .quad 0
 
+.set NT_FREEBSD_ABI_TAG, 1
+.set FREEBSD_ABI_OSREL, 1400000
+
+.section .note.tag,"a",@note
+.p2align 2
+.long 2f - 1f
+.long 4f - 3f
+.long NT_FREEBSD_ABI_TAG
+1:  .asciz "FreeBSD"
+2:  .p2align 2
+3:  .long FREEBSD_ABI_OSREL
+4:
+
 .section .note.GNU-stack,"",@progbits
