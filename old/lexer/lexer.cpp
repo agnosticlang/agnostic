@@ -6,6 +6,7 @@
 #include <cctype>
 #include <cstdlib>
 #include <limits>
+#include <optional>
 #include <unordered_map>
 
 namespace agn::lexer {
@@ -13,12 +14,46 @@ namespace agn::lexer {
 using agn::misc::CompileError;
 using agn::misc::ErrorKind;
 
+namespace {
+
+class Scanner {
+public:
+    Scanner(const std::string& input, const std::string& file);
+
+    std::vector<Token> tokenize();
+
+private:
+    void advance();
+    std::optional<char> peek(size_t offset) const;
+    void skipWhitespace();
+    void skipComment();
+    Token readNumber();
+    Token readIdentifier();
+    Token readString();
+
+    const std::string& input_;
+    const std::string& file_;
+    size_t position_ = 0;
+    std::optional<char> currentChar_;
+    size_t line_ = 1;
+    size_t column_ = 1;
+};
+
+} // namespace
+
 Lexer::Lexer(std::string input, std::string file)
-    : input_(std::move(input)), file_(std::move(file)) {
+    : input_(std::move(input)), file_(std::move(file)) {}
+
+std::vector<Token> Lexer::tokenize() {
+    return Scanner(input_, file_).tokenize();
+}
+
+Scanner::Scanner(const std::string& input, const std::string& file)
+    : input_(input), file_(file) {
     currentChar_ = input_.empty() ? std::nullopt : std::optional<char>(input_[0]);
 }
 
-void Lexer::advance() {
+void Scanner::advance() {
     if (currentChar_ && *currentChar_ == '\n') {
         line_++;
         column_ = 1;
@@ -29,24 +64,24 @@ void Lexer::advance() {
     currentChar_ = position_ < input_.size() ? std::optional<char>(input_[position_]) : std::nullopt;
 }
 
-std::optional<char> Lexer::peek(size_t offset) const {
+std::optional<char> Scanner::peek(size_t offset) const {
     size_t pos = position_ + offset;
     return pos < input_.size() ? std::optional<char>(input_[pos]) : std::nullopt;
 }
 
-void Lexer::skipWhitespace() {
+void Scanner::skipWhitespace() {
     while (currentChar_ && (*currentChar_ == ' ' || *currentChar_ == '\t' || *currentChar_ == '\r')) {
         advance();
     }
 }
 
-void Lexer::skipComment() {
+void Scanner::skipComment() {
     if (currentChar_ == '/' && peek(1) == '/') {
         while (currentChar_ && *currentChar_ != '\n') advance();
     }
 }
 
-Token Lexer::readNumber() {
+Token Scanner::readNumber() {
     std::string digits;
     while (currentChar_ && std::isdigit(static_cast<unsigned char>(*currentChar_))) {
         digits.push_back(*currentChar_);
@@ -75,7 +110,7 @@ Token Lexer::readNumber() {
     return Token{TokenKind::Number, "", value};
 }
 
-Token Lexer::readIdentifier() {
+Token Scanner::readIdentifier() {
     static const std::unordered_map<std::string, TokenKind> keywords = {
         {"package", TokenKind::Package}, {"import", TokenKind::Import},
         {"use", TokenKind::Import},      {"func", TokenKind::Func},
@@ -102,7 +137,7 @@ Token Lexer::readIdentifier() {
     return Token{TokenKind::Identifier, id, 0};
 }
 
-Token Lexer::readString() {
+Token Scanner::readString() {
     advance();
     std::string value;
     while (currentChar_ && *currentChar_ != '"') {
@@ -187,7 +222,7 @@ const char* tokenKindName(TokenKind kind) {
     return "?";
 }
 
-std::vector<Token> Lexer::tokenize() {
+std::vector<Token> Scanner::tokenize() {
     std::vector<Token> tokens;
 
     for (;;) {

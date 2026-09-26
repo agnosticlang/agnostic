@@ -19,17 +19,7 @@ double LexFloatValue(const char* source, long pos);
 }
 
 Lexer::Lexer(std::string input, std::string file)
-    : input_(std::move(input)), file_(std::move(file)) {
-    currentChar_ = input_.empty() ? std::nullopt : std::optional<char>(input_[0]);
-}
-
-void Lexer::advance() {}
-std::optional<char> Lexer::peek(size_t) const { return std::nullopt; }
-void Lexer::skipWhitespace() {}
-void Lexer::skipComment() {}
-Token Lexer::readNumber() { return Token{}; }
-Token Lexer::readIdentifier() { return Token{}; }
-Token Lexer::readString() { return Token{}; }
+    : input_(std::move(input)), file_(std::move(file)) {}
 
 std::vector<Token> Lexer::tokenize() {
     const char* src = input_.c_str();
