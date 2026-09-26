@@ -9,7 +9,7 @@ description: CLI flags, backends, memory modes, and packaging.
 agnostic <source.agn> [options]
   --backend=llvm|gcc       select codegen backend (default: llvm)
   --mem=arc|manual|orc     select memory management mode (default: arc)
-  --target-os=linux|freebsd|windows|hurd  (default: linux, only linux/freebsd/windows implemented)
+  --target-os=linux|freebsd|windows|hurd  (default: linux)
   --output=<path>          output executable path
   --version                print version and exit
   --help                   print usage and exit
@@ -35,9 +35,11 @@ Generates native machine code through libgccjit, GCC's embeddable code generatio
 
 ## target-os
 
-`linux`, `freebsd`, and `windows` have real platform implementations; `hurd` is not implemented yet and fails with "only --target-os=linux, freebsd, and windows have a real platform/runtime implementation". The `freebsd` target links raw amd64 syscalls directly (no libc) and marks the resulting static ELF as a FreeBSD binary with the FreeBSD ABI note (`.note.tag`, `NT_FREEBSD_ABI_TAG`, OS version 14.0), the same note FreeBSD's own startup files add. The note comes from the FreeBSD startup code, so it works with any linker and both backends. Verified by running compiled binaries from both the `llvm` and `gcc` backends (including closures and structs, which exercise the heap allocator) on a real FreeBSD 15.1 VM.
+All four targets have real platform implementations. The `freebsd` target links raw amd64 syscalls directly (no libc) and marks the resulting static ELF as a FreeBSD binary with the FreeBSD ABI note (`.note.tag`, `NT_FREEBSD_ABI_TAG`, OS version 14.0), the same note FreeBSD's own startup files add. The note comes from the FreeBSD startup code, so it works with any linker and both backends. Verified by running compiled binaries from both the `llvm` and `gcc` backends (including closures and structs, which exercise the heap allocator) on a real FreeBSD 15.1 VM.
 
 The `windows` target produces a PE32+ console executable, `<output>.exe`, for x86-64, the same way Go does it: the program calls kernel32.dll directly, with no C runtime, no MSVC or MinGW libraries, and no raw NT system calls, whose numbers change between Windows builds. The runtime imports a fixed list of kernel32 functions (`src/platform/windows/kernel32.def`), and the compiler build turns that list into an import library with `llvm-dlltool`. Command-line arguments come from `GetCommandLineW`, are split with the standard Windows quoting rules, and reach the program as UTF-8. The target needs `--backend=llvm`, because libgccjit only generates code for the host, and `lld-link` on `PATH` to link. Verified by running the test programs under Wine.
+
+The `hurd` target produces a static ELF executable for x86-64 GNU/Hurd without glibc. The program talks to GNU Mach and the Hurd servers directly: Mach traps for `mach_msg`, `vm_allocate`, `vm_deallocate`, `mach_port_deallocate`, and `task_terminate`, and MIG messages that the runtime encodes itself for `exec_startup_get_info` (arguments, file descriptors, and initial ports), `io_read`, `io_write`, `dir_lookup`, `file_set_size`, and `proc_mark_exit`. File name lookup follows the retries a server asks for, including absolute symbolic links; a lookup that needs reauthentication or another magical name fails. The program registers no message port, so it receives no signals. This target has not been run on a Hurd system yet: the message layouts come from the GNU Mach, MIG, and Hurd sources, and the test suite only checks that programs compile and link.
 
 ## Diagnostics
 

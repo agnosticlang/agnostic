@@ -40,6 +40,19 @@ expect_run() {
 expect_llvm_run() { expect_run llvm "$1" "$2" "$3"; }
 expect_gcc_run() { expect_run gcc "$1" "$2" "$3"; }
 
+expect_hurd_compile() {
+    name=$1
+    path=$2
+    out="$WORK_DIR/${name}_hurd"
+
+    if ! "$AGNOSTIC" "$path" --target-os=hurd --output="$out" >/dev/null 2>&1; then
+        echo "FAIL: $name (hurd) did not compile"
+        fail=1
+        return
+    fi
+    echo "PASS: $name (hurd, compile-only; not executed)"
+}
+
 expect_windows_run() {
     name=$1
     path=$2
@@ -176,6 +189,26 @@ expect_freebsd_compile math_stdlib "scripts/testdata/math_test.agn"
 expect_freebsd_compile strings_runtime "scripts/testdata/strings_runtime_test.agn"
 expect_freebsd_compile string_stdlib "scripts/testdata/string_test.agn"
 expect_freebsd_compile os_string "scripts/testdata/os_string_test.agn"
+
+expect_hurd_compile closures "examples/closures.agn"
+expect_hurd_compile structs "examples/structs.agn"
+expect_hurd_compile comptime_platform "examples/comptime_platform.agn"
+expect_hurd_compile hello "examples/hello.agn"
+expect_hurd_compile fizzbuzz "examples/fizzbuzz.agn"
+expect_hurd_compile primes "examples/primes.agn"
+expect_hurd_compile bubble_sort "examples/bubble_sort.agn"
+expect_hurd_compile strings_demo "examples/strings_demo.agn"
+expect_hurd_compile fibonacci "examples/fibonacci.agn"
+expect_hurd_compile generics "examples/generics.agn"
+expect_hurd_compile floats "examples/floats.agn"
+expect_hurd_compile comptime_eval "examples/comptime_eval.agn"
+expect_hurd_compile comptime_generics "examples/comptime_generics.agn"
+expect_hurd_compile comptime_generic_values "examples/comptime_generic_values.agn"
+expect_hurd_compile casts "examples/casts.agn"
+expect_hurd_compile math_stdlib "scripts/testdata/math_test.agn"
+expect_hurd_compile strings_runtime "scripts/testdata/strings_runtime_test.agn"
+expect_hurd_compile string_stdlib "scripts/testdata/string_test.agn"
+expect_hurd_compile os_string "scripts/testdata/os_string_test.agn"
 
 expect_windows_run closures "examples/closures.agn" "$(printf '1\n2\n3\n42')"
 expect_windows_run structs "examples/structs.agn" "$(printf '25\n4\n5\n10')"

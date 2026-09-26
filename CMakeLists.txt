@@ -50,6 +50,8 @@ install(TARGETS agnostic RUNTIME DESTINATION bin)
 install(TARGETS agn_llvm_runtime agn_memory_arc agn_memory_manual agn_memory_orc agn_platform_linux
                 agn_llvm_runtime_freebsd agn_memory_arc_freebsd agn_memory_manual_freebsd
                 agn_memory_orc_freebsd agn_platform_freebsd
+                agn_llvm_runtime_hurd agn_memory_arc_hurd agn_memory_manual_hurd agn_memory_orc_hurd
+                agn_platform_hurd
         ARCHIVE DESTINATION lib/agnostic)
 install(DIRECTORY stdlib/ DESTINATION share/agnostic/stdlib)
 

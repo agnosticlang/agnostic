@@ -102,7 +102,7 @@ void printUsage(const char* argv0) {
     std::cerr << "Usage: " << argv0 << " <source.agn> [options]\n"
               << "  --backend=llvm|gcc       select codegen backend (default: llvm)\n"
               << "  --mem=arc|manual|orc     select memory management mode (default: arc; orc allocations don't survive their function)\n"
-              << "  --target-os=linux|freebsd|windows|hurd  (default: linux, only linux/freebsd/windows implemented)\n"
+              << "  --target-os=linux|freebsd|windows|hurd  (default: linux)\n"
               << "  --output=<path>          output executable path\n"
               << "  -c, --compile-only       emit an object file (<output>.o) instead of linking an executable\n"
               << "  --version                print version and exit\n"
@@ -198,8 +198,8 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    if (targetOs != "linux" && targetOs != "freebsd" && targetOs != "windows") {
-        std::cerr << "error: only --target-os=linux, freebsd, and windows have a real platform/runtime implementation\n";
+    if (targetOs != "linux" && targetOs != "freebsd" && targetOs != "windows" && targetOs != "hurd") {
+        std::cerr << "error: unknown --target-os= value '" << targetOs << "'\n";
         return 1;
     }
 
