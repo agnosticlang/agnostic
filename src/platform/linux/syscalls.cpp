@@ -48,15 +48,15 @@ void exitProcess(int code) {
     __builtin_unreachable();
 }
 
-long readFd(int fd, void* buf, unsigned long count) {
+int64_t readFd(int fd, void* buf, uint64_t count) {
     return syscall3(SYS_read, fd, reinterpret_cast<long>(buf), static_cast<long>(count));
 }
 
-long writeFd(int fd, const void* buf, unsigned long count) {
+int64_t writeFd(int fd, const void* buf, uint64_t count) {
     return syscall3(SYS_write, fd, reinterpret_cast<long>(buf), static_cast<long>(count));
 }
 
-void* mapAnonymous(unsigned long size) {
+void* mapAnonymous(uint64_t size) {
     constexpr long PROT_READ_WRITE = 0x3;
     constexpr long MAP_PRIVATE_ANONYMOUS = 0x22;
     long ret = syscall6(SYS_mmap, 0, static_cast<long>(size), PROT_READ_WRITE,
@@ -65,28 +65,28 @@ void* mapAnonymous(unsigned long size) {
     return reinterpret_cast<void*>(ret);
 }
 
-void unmap(void* ptr, unsigned long size) {
+void unmap(void* ptr, uint64_t size) {
     syscall3(SYS_munmap, reinterpret_cast<long>(ptr), static_cast<long>(size), 0);
 }
 
-long openRead(const char* path) {
+int64_t openRead(const char* path) {
     return syscall3(SYS_open, reinterpret_cast<long>(path), O_RDONLY, 0);
 }
 
-long openCreate(const char* path) {
+int64_t openCreate(const char* path) {
     return syscall3(SYS_open, reinterpret_cast<long>(path), O_WRONLY_CREAT_TRUNC, CREATE_MODE_0644);
 }
 
-long closeFd(int fd) {
+int64_t closeFd(int fd) {
     return syscall3(SYS_close, fd, 0, 0);
 }
 
 extern "C" long agn_argc;
 extern "C" const char** agn_argv;
 
-long argCount() { return agn_argc; }
+int64_t argCount() { return agn_argc; }
 
-const char* argAt(long index) {
+const char* argAt(int64_t index) {
     if (index < 0 || index >= agn_argc) return nullptr;
     return agn_argv[index];
 }

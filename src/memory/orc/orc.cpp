@@ -28,7 +28,7 @@ void enterRegion() {
     current = r;
 }
 
-void* alloc(unsigned long size) {
+void* alloc(uint64_t size) {
     if (current == nullptr) enterRegion();
 
     void* ptr = manual::alloc(size);

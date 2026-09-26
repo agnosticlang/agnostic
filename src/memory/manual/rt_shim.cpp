@@ -2,6 +2,6 @@
 // SPDX-FileCopyrightText: 2026 AnmiTaliDev <anmitalidev@nuros.org>
 #include "memory/manual/allocator.hpp"
 
-extern "C" void* agn_rt_alloc(unsigned long size) { return agn::memory::manual::alloc(size); }
+extern "C" void* agn_rt_alloc(uint64_t size) { return agn::memory::manual::alloc(size); }
 extern "C" void agn_rt_retain(void*) {}
 extern "C" void agn_rt_release(void*) {}

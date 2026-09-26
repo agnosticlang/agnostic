@@ -6,10 +6,10 @@
 namespace agn::memory::arc {
 
 namespace {
-struct Header { unsigned long refcount; };
+struct Header { uint64_t refcount; };
 }
 
-void* alloc(unsigned long size) {
+void* alloc(uint64_t size) {
     void* raw = manual::alloc(size + sizeof(Header));
     if (raw == nullptr) return nullptr;
     auto* h = reinterpret_cast<Header*>(raw);

@@ -12,22 +12,22 @@ namespace agn::memory::manual {
 namespace {
 
 struct Block {
-    unsigned long size;
+    uint64_t size;
     Block* next;
 };
 
-constexpr unsigned long kAlign = 16;
-constexpr unsigned long kChunkSize = 1UL << 16;
+constexpr uint64_t kAlign = 16;
+constexpr uint64_t kChunkSize = 1UL << 16;
 
 Block* freeList = nullptr;
 
-unsigned long roundUp(unsigned long n, unsigned long align) {
+uint64_t roundUp(uint64_t n, uint64_t align) {
     return (n + align - 1) & ~(align - 1);
 }
 
 } // namespace
 
-void* alloc(unsigned long size) {
+void* alloc(uint64_t size) {
     size = roundUp(size, kAlign);
 
     Block** prev = &freeList;
@@ -39,7 +39,7 @@ void* alloc(unsigned long size) {
         prev = &b->next;
     }
 
-    unsigned long mapSize = roundUp(size + sizeof(Block), kChunkSize);
+    uint64_t mapSize = roundUp(size + sizeof(Block), kChunkSize);
     void* mem = agn::platform::mapAnonymous(mapSize);
     if (mem == nullptr) return nullptr;
 

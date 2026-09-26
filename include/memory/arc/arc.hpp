@@ -2,9 +2,11 @@
 // SPDX-FileCopyrightText: 2026 AnmiTaliDev <anmitalidev@nuros.org>
 #pragma once
 
+#include <stdint.h>
+
 namespace agn::memory::arc {
 
-void* alloc(unsigned long size);
+void* alloc(uint64_t size);
 void retain(void* ptr);
 void release(void* ptr);
 

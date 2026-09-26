@@ -2,17 +2,19 @@
 // SPDX-FileCopyrightText: 2026 AnmiTaliDev <anmitalidev@nuros.org>
 #pragma once
 
+#include <stdint.h>
+
 namespace agn::platform {
 
 [[noreturn]] void exitProcess(int code);
-long readFd(int fd, void* buf, unsigned long count);
-long writeFd(int fd, const void* buf, unsigned long count);
-void* mapAnonymous(unsigned long size);
-void unmap(void* ptr, unsigned long size);
-long openRead(const char* path);
-long openCreate(const char* path);
-long closeFd(int fd);
-long argCount();
-const char* argAt(long index);
+int64_t readFd(int fd, void* buf, uint64_t count);
+int64_t writeFd(int fd, const void* buf, uint64_t count);
+void* mapAnonymous(uint64_t size);
+void unmap(void* ptr, uint64_t size);
+int64_t openRead(const char* path);
+int64_t openCreate(const char* path);
+int64_t closeFd(int fd);
+int64_t argCount();
+const char* argAt(int64_t index);
 
 } // namespace agn::platform
