@@ -50,23 +50,26 @@ fs::path findRuntimeLib(const fs::path& exeDir, const std::string& buildRelPath,
 }
 
 fs::path findModuleFile(const std::string& name, const fs::path& sourceDir, const fs::path& exeDir) {
-    for (auto ext : {".agn", ".per"}) {
-        fs::path candidate = sourceDir / (name + ext);
-        if (fs::exists(candidate)) return candidate;
-    }
-    for (auto ext : {".agn", ".per"}) {
-        fs::path candidate = fs::path("stdlib") / (name + ext);
-        if (fs::exists(candidate)) return candidate;
-    }
-    for (auto ext : {".agn", ".per"}) {
-        fs::path candidate = exeDir / "stdlib" / (name + ext);
-        if (fs::exists(candidate)) return candidate;
-    }
-    for (auto ext : {".agn", ".per"}) {
-        fs::path candidate = exeDir.parent_path() / "share" / "agnostic" / "stdlib" / (name + ext);
-        if (fs::exists(candidate)) return candidate;
+    const fs::path searchDirs[] = {
+        sourceDir,
+        exeDir / "stdlib",
+        exeDir.parent_path() / "share" / "agnostic" / "stdlib",
+        AGNOSTIC_SOURCE_STDLIB_DIR,
+    };
+    for (auto& dir : searchDirs) {
+        for (auto ext : {".agn", ".per"}) {
+            fs::path candidate = dir / (name + ext);
+            if (fs::exists(candidate)) return candidate;
+        }
     }
     return {};
+}
+
+fs::path executableDir(const char* argv0) {
+    std::error_code ec;
+    fs::path self = fs::read_symlink("/proc/self/exe", ec);
+    if (ec) self = fs::weakly_canonical(fs::absolute(argv0));
+    return self.parent_path();
 }
 
 void loadModules(agn::ast::Program& program, const fs::path& sourceDir, const fs::path& exeDir,
@@ -152,7 +155,7 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    fs::path exeDir = fs::absolute(argv[0]).parent_path();
+    fs::path exeDir = executableDir(argv[0]);
     fs::path sourceDir = fs::path(sourceFile).parent_path();
     if (sourceDir.empty()) sourceDir = ".";
 

@@ -10,7 +10,7 @@ import "stdio"
 import "math"
 ```
 
-`import "name"` looks for `name.agn`, searched in this order: next to the file doing the importing, then `stdlib/` under the current working directory, then a `stdlib/` directory next to the compiler binary, then `../share/agnostic/stdlib/` relative to the compiler binary (the layout used by installed packages). The first match wins.
+`import "name"` looks for `name.agn`, searched in this order: the directory of the source file being compiled, then a `stdlib/` directory next to the compiler binary, then `../share/agnostic/stdlib/` relative to the compiler binary (the layout used by installed packages), then the `stdlib/` directory of the source tree the compiler was built from (for a compiler run straight out of its build directory). The first match wins. The lookup does not depend on the current working directory.
 
 ## Calling into a module
 
