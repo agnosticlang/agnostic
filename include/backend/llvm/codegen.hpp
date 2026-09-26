@@ -14,7 +14,8 @@ enum class MemMode { Arc, Manual, Orc };
 
 class Codegen {
 public:
-    Codegen(agn::parser::TypeChecker& checker, MemMode mode, const std::string& moduleName);
+    Codegen(agn::parser::TypeChecker& checker, MemMode mode, const std::string& moduleName,
+            const std::string& targetOs);
     ~Codegen();
 
     void generate(agn::ast::Program& program);

@@ -9,3 +9,7 @@ add_library(agn_memory_orc_freebsd STATIC orc.cpp rt_shim.cpp)
 target_include_directories(agn_memory_orc_freebsd PUBLIC ${PROJECT_SOURCE_DIR}/include)
 target_link_libraries(agn_memory_orc_freebsd PUBLIC agn_memory_manual_freebsd)
 target_compile_options(agn_memory_orc_freebsd PRIVATE -ffreestanding -fno-exceptions -fno-rtti)
+
+if(AGN_WINDOWS_TARGET)
+  agn_add_windows_library(agn_memory_orc_windows SOURCES orc.cpp rt_shim.cpp)
+endif()

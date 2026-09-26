@@ -9,7 +9,7 @@ description: CLI flags, backends, memory modes, and packaging.
 agnostic <source.agn> [options]
   --backend=llvm|gcc       select codegen backend (default: llvm)
   --mem=arc|manual|orc     select memory management mode (default: arc)
-  --target-os=linux|freebsd|windows|hurd  (default: linux, only linux implemented)
+  --target-os=linux|freebsd|windows|hurd  (default: linux, only linux/freebsd/windows implemented)
   --output=<path>          output executable path
   --version                print version and exit
   --help                   print usage and exit
@@ -35,7 +35,9 @@ Generates native machine code through libgccjit, GCC's embeddable code generatio
 
 ## target-os
 
-`linux` and `freebsd` have real platform implementations; `windows` and `hurd` are unimplemented stubs and fail with "only --target-os=linux and --target-os=freebsd have a real platform/runtime implementation". The `freebsd` target links raw amd64 syscalls directly (no libc) and marks the resulting static ELF as a FreeBSD binary with the FreeBSD ABI note (`.note.tag`, `NT_FREEBSD_ABI_TAG`, OS version 14.0), the same note FreeBSD's own startup files add. The note comes from the FreeBSD startup code, so it works with any linker and both backends. Verified by running compiled binaries from both the `llvm` and `gcc` backends (including closures and structs, which exercise the heap allocator) on a real FreeBSD 15.1 VM.
+`linux`, `freebsd`, and `windows` have real platform implementations; `hurd` is not implemented yet and fails with "only --target-os=linux, freebsd, and windows have a real platform/runtime implementation". The `freebsd` target links raw amd64 syscalls directly (no libc) and marks the resulting static ELF as a FreeBSD binary with the FreeBSD ABI note (`.note.tag`, `NT_FREEBSD_ABI_TAG`, OS version 14.0), the same note FreeBSD's own startup files add. The note comes from the FreeBSD startup code, so it works with any linker and both backends. Verified by running compiled binaries from both the `llvm` and `gcc` backends (including closures and structs, which exercise the heap allocator) on a real FreeBSD 15.1 VM.
+
+The `windows` target produces a PE32+ console executable, `<output>.exe`, for x86-64, the same way Go does it: the program calls kernel32.dll directly, with no C runtime, no MSVC or MinGW libraries, and no raw NT system calls, whose numbers change between Windows builds. The runtime imports a fixed list of kernel32 functions (`src/platform/windows/kernel32.def`), and the compiler build turns that list into an import library with `llvm-dlltool`. Command-line arguments come from `GetCommandLineW`, are split with the standard Windows quoting rules, and reach the program as UTF-8. The target needs `--backend=llvm`, because libgccjit only generates code for the host, and `lld-link` on `PATH` to link. Verified by running the test programs under Wine.
 
 ## Diagnostics
 
@@ -55,7 +57,7 @@ cmake -S . -B build
 cmake --build build -j$(nproc)
 ```
 
-Requires LLVM development files on the CMake search path and a C++20 compiler. See [Getting Started](/en/getting-started/).
+Requires LLVM development files on the CMake search path and a C++20 compiler. See [Getting Started](/en/getting-started/). The `windows` target also needs `clang`, `llvm-lib`, and `llvm-dlltool` at build time; if one of them is missing, CMake disables the target and says so.
 
 ## Installing from a package
 

@@ -18,6 +18,8 @@ endif()
 
 add_compile_options(-Wall -Wextra)
 
+include(cmake/WindowsTarget.cmake)
+
 add_subdirectory(src/ast)
 add_subdirectory(src/misc)
 add_subdirectory(src/lexer)

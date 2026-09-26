@@ -2,6 +2,8 @@
 // SPDX-FileCopyrightText: 2026 AnmiTaliDev <anmitalidev@nuros.org>
 #if defined(AGN_TARGET_FREEBSD)
 #include "platform/freebsd/platform.hpp"
+#elif defined(AGN_TARGET_WINDOWS)
+#include "platform/windows/platform.hpp"
 #else
 #include "platform/linux/platform.hpp"
 #endif

@@ -102,7 +102,7 @@ void printUsage(const char* argv0) {
     std::cerr << "Usage: " << argv0 << " <source.agn> [options]\n"
               << "  --backend=llvm|gcc       select codegen backend (default: llvm)\n"
               << "  --mem=arc|manual|orc     select memory management mode (default: arc; orc allocations don't survive their function)\n"
-              << "  --target-os=linux|freebsd|windows|hurd  (default: linux, only linux/freebsd implemented)\n"
+              << "  --target-os=linux|freebsd|windows|hurd  (default: linux, only linux/freebsd/windows implemented)\n"
               << "  --output=<path>          output executable path\n"
               << "  -c, --compile-only       emit an object file (<output>.o) instead of linking an executable\n"
               << "  --version                print version and exit\n"
@@ -198,8 +198,14 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    if (targetOs != "linux" && targetOs != "freebsd") {
-        std::cerr << "error: only --target-os=linux and --target-os=freebsd have a real platform/runtime implementation\n";
+    if (targetOs != "linux" && targetOs != "freebsd" && targetOs != "windows") {
+        std::cerr << "error: only --target-os=linux, freebsd, and windows have a real platform/runtime implementation\n";
+        return 1;
+    }
+
+    if (backend == "gcc" && targetOs == "windows") {
+        std::cerr << "error: --backend=gcc cannot target windows (libgccjit only generates code for the host); "
+                     "use --backend=llvm\n";
         return 1;
     }
 
@@ -208,7 +214,7 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    std::string objPath = finalOutput + ".o";
+    std::string objPath = finalOutput + (targetOs == "windows" ? ".obj" : ".o");
     std::string codegenError;
     if (backend == "gcc") {
         agn::backend::gcc::MemMode mode = agn::backend::gcc::MemMode::Arc;
@@ -226,7 +232,7 @@ int main(int argc, char** argv) {
         if (memMode == "manual") mode = agn::backend::llvm_backend::MemMode::Manual;
         else if (memMode == "orc") mode = agn::backend::llvm_backend::MemMode::Orc;
 
-        agn::backend::llvm_backend::Codegen codegen(checker, mode, fs::path(sourceFile).filename().string());
+        agn::backend::llvm_backend::Codegen codegen(checker, mode, fs::path(sourceFile).filename().string(), targetOs);
         codegen.generate(program);
         if (!codegen.emitObjectFile(objPath, codegenError)) {
             std::cerr << "error: " << codegenError << "\n";
@@ -239,7 +245,7 @@ int main(int argc, char** argv) {
         return 0;
     }
 
-    std::string osSuffix = targetOs == "freebsd" ? "_freebsd" : "";
+    std::string osSuffix = targetOs == "linux" ? "" : "_" + targetOs;
     fs::path runtimeLib = findRuntimeLib(exeDir, "src/backend/llvm/runtime/libagn_llvm_runtime" + osSuffix + ".a",
                                           "libagn_llvm_runtime" + osSuffix + ".a");
     fs::path memoryLib = findRuntimeLib(exeDir, "src/memory/" + memMode + "/libagn_memory_" + memMode + osSuffix + ".a",
@@ -249,12 +255,27 @@ int main(int argc, char** argv) {
     fs::path platformLib = findRuntimeLib(exeDir, "src/platform/" + targetOs + "/libagn_platform_" + targetOs + ".a",
                                            "libagn_platform_" + targetOs + ".a");
 
+    if (!fs::exists(platformLib)) {
+        std::cerr << "error: the " << targetOs << " runtime was not built with this compiler"
+                  << (targetOs == "windows" ? " (building it needs clang, llvm-lib, and llvm-dlltool)" : "") << "\n";
+        std::remove(objPath.c_str());
+        return 1;
+    }
+
     std::string libGroup = "\"" + runtimeLib.string() + "\" \"" + memoryLib.string() + "\"";
     if (memMode != "manual") libGroup += " \"" + manualLib.string() + "\"";
     libGroup += " \"" + platformLib.string() + "\"";
 
-    std::string linkCmd = "cc -nostdlib -static -no-pie -e _start -o \"" + finalOutput + "\" \"" + objPath +
-                          "\" -Wl,--start-group " + libGroup + " -Wl,--end-group";
+    std::string exePath = finalOutput;
+    std::string linkCmd;
+    if (targetOs == "windows") {
+        if (fs::path(exePath).extension() != ".exe") exePath += ".exe";
+        linkCmd = "lld-link -nologo -subsystem:console -entry:agn_start -nodefaultlib -out:\"" + exePath + "\" \"" +
+                  objPath + "\" " + libGroup;
+    } else {
+        linkCmd = "cc -nostdlib -static -no-pie -e _start -o \"" + exePath + "\" \"" + objPath +
+                  "\" -Wl,--start-group " + libGroup + " -Wl,--end-group";
+    }
     int rc = std::system(linkCmd.c_str());
     if (rc != 0) {
         std::cerr << "error: linking failed (object file kept at " << objPath << ")\n";
@@ -262,6 +283,6 @@ int main(int argc, char** argv) {
     }
 
     std::remove(objPath.c_str());
-    std::cout << "Compilation successful: " << finalOutput << "\n";
+    std::cout << "Compilation successful: " << exePath << "\n";
     return 0;
 }

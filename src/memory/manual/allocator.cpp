@@ -3,6 +3,8 @@
 #include "memory/manual/allocator.hpp"
 #if defined(AGN_TARGET_FREEBSD)
 #include "platform/freebsd/platform.hpp"
+#elif defined(AGN_TARGET_WINDOWS)
+#include "platform/windows/platform.hpp"
 #else
 #include "platform/linux/platform.hpp"
 #endif

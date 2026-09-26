@@ -54,6 +54,7 @@ struct LocalVar {
 struct Codegen::Impl {
     agn::parser::TypeChecker& checker;
     MemMode mode;
+    std::string targetOs;
     llvm::LLVMContext ctx;
     std::unique_ptr<llvm::Module> mod;
     llvm::IRBuilder<> builder;
@@ -81,8 +82,8 @@ struct Codegen::Impl {
     std::vector<llvm::Value*> arcTrackedClosures;
     std::unordered_set<std::string> capturedInCurrentFn;
 
-    Impl(agn::parser::TypeChecker& c, MemMode m, const std::string& name)
-        : checker(c), mode(m), builder(ctx) {
+    Impl(agn::parser::TypeChecker& c, MemMode m, const std::string& name, const std::string& os)
+        : checker(c), mode(m), targetOs(os), builder(ctx) {
         mod = std::make_unique<llvm::Module>(name, ctx);
         ptrTy = llvm::PointerType::get(ctx, 0);
         i64Ty = llvm::Type::getInt64Ty(ctx);
@@ -1316,8 +1317,9 @@ struct Codegen::Impl {
     }
 };
 
-Codegen::Codegen(agn::parser::TypeChecker& checker, MemMode mode, const std::string& moduleName)
-    : impl_(std::make_unique<Impl>(checker, mode, moduleName)) {}
+Codegen::Codegen(agn::parser::TypeChecker& checker, MemMode mode, const std::string& moduleName,
+                 const std::string& targetOs)
+    : impl_(std::make_unique<Impl>(checker, mode, moduleName, targetOs)) {}
 
 Codegen::~Codegen() = default;
 
@@ -1334,7 +1336,7 @@ bool Codegen::emitObjectFile(const std::string& path, std::string& errorOut) {
     llvm::InitializeNativeTarget();
     llvm::InitializeNativeTargetAsmPrinter();
 
-    llvm::Triple triple(llvm::sys::getDefaultTargetTriple());
+    llvm::Triple triple(impl_->targetOs == "windows" ? "x86_64-pc-windows-msvc" : llvm::sys::getDefaultTargetTriple());
     std::string lookupError;
 #if LLVM_VERSION_MAJOR >= 19
     const llvm::Target* target = llvm::TargetRegistry::lookupTarget(triple, lookupError);

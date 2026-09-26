@@ -40,6 +40,33 @@ expect_run() {
 expect_llvm_run() { expect_run llvm "$1" "$2" "$3"; }
 expect_gcc_run() { expect_run gcc "$1" "$2" "$3"; }
 
+expect_windows_run() {
+    name=$1
+    path=$2
+    expected_stdout=$3
+    out="$WORK_DIR/${name}_windows"
+
+    if ! command -v wine >/dev/null 2>&1 || ! command -v lld-link >/dev/null 2>&1; then
+        echo "SKIP: $name (windows; needs wine and lld-link)"
+        return
+    fi
+    if ! "$AGNOSTIC" "$path" --target-os=windows --output="$out" >/dev/null 2>&1; then
+        echo "FAIL: $name (windows) did not compile"
+        fail=1
+        return
+    fi
+
+    actual_stdout="$(WINEDEBUG=-all wine "$out.exe" 2>/dev/null)"
+    if [ "$actual_stdout" != "$expected_stdout" ]; then
+        echo "FAIL: $name (windows) stdout mismatch"
+        echo "  expected: $expected_stdout"
+        echo "  actual:   $actual_stdout"
+        fail=1
+        return
+    fi
+    echo "PASS: $name (windows)"
+}
+
 expect_freebsd_compile() {
     name=$1
     path=$2
@@ -149,6 +176,33 @@ expect_freebsd_compile math_stdlib "scripts/testdata/math_test.agn"
 expect_freebsd_compile strings_runtime "scripts/testdata/strings_runtime_test.agn"
 expect_freebsd_compile string_stdlib "scripts/testdata/string_test.agn"
 expect_freebsd_compile os_string "scripts/testdata/os_string_test.agn"
+
+expect_windows_run closures "examples/closures.agn" "$(printf '1\n2\n3\n42')"
+expect_windows_run structs "examples/structs.agn" "$(printf '25\n4\n5\n10')"
+expect_windows_run comptime_platform "examples/comptime_platform.agn" "0"
+expect_windows_run hello "examples/hello.agn" "Hello, World!"
+expect_windows_run fizzbuzz "examples/fizzbuzz.agn" \
+    "$(printf '1\n2\nFizz\n4\nBuzz\nFizz\n7\n8\nFizz\nBuzz\n11\nFizz\n13\n14\nFizzBuzz\n16\n17\nFizz\n19\nBuzz\nFizz\n22\n23\nFizz\nBuzz\n26\nFizz\n28\n29\nFizzBuzz')"
+expect_windows_run primes "examples/primes.agn" "$(printf '2\n3\n5\n7\n11\n13\n17\n19\n23\n29')"
+expect_windows_run bubble_sort "examples/bubble_sort.agn" "$(printf '1\n2\n3\n4\n5\n7\n8\n9')"
+expect_windows_run strings_demo "examples/strings_demo.agn" "$(printf 'Hello, Agnostic!\n16\n-1\n1\n0\ntrue\nfalse')"
+expect_windows_run fibonacci "examples/fibonacci.agn" \
+    "$(printf '0\n1\n1\n2\n3\n5\n8\n13\n21\n34\n55\n89\n144\n233\n377')"
+expect_windows_run generics "examples/generics.agn" "$(printf 'true\n5\nfalse\ndivide by zero\ntrue\n3\nfalse')"
+expect_windows_run floats "examples/floats.agn" \
+    "$(printf '12.566360\n4.000000\n-1.000000\n3.750000\n0.600000\n-1.500000\nx < y\n2.000000\n5.500000')"
+expect_windows_run comptime_eval "examples/comptime_eval.agn" "$(printf '55\n10\ncombined false')"
+expect_windows_run comptime_generics "examples/comptime_generics.agn" "$(printf '7\n10\n42\n5\n6')"
+expect_windows_run comptime_generic_values "examples/comptime_generic_values.agn" "$(printf '15\n15\n42\n21')"
+expect_windows_run casts "examples/casts.agn" "$(printf '44\n255\n-56\n3\n1\n42\nhi')"
+expect_windows_run math_stdlib "scripts/testdata/math_test.agn" \
+    "$(printf '7\n3\n1024\n9\n6\n12\n120\ntrue\nfalse\n10\n55\ntrue\nfalse\n55')"
+expect_windows_run strings_runtime "scripts/testdata/strings_runtime_test.agn" \
+    "$(printf 'foobar\nhello Agnostic, value=00042')"
+expect_windows_run string_stdlib "scripts/testdata/string_test.agn" \
+    "$(printf '5\n0\n-1\n1\nfoobar\ntrue\nfalse')"
+expect_windows_run os_string "scripts/testdata/os_string_test.agn" \
+    "$(printf 'HELLO\nworld\ntrue\n6\nfalse\ntrue\nfalse\ntrue\nfalse\ntrue\nfalse\ntrue\n101\nworld\nargcount_ok\ntrue\n9')"
 
 expect_reject bool_to_int "scripts/testdata/reject/bool_to_int.agn" "declared as i64, initialized with bool"
 expect_reject int_to_bool "scripts/testdata/reject/int_to_bool.agn" "declared as bool, initialized with i64"

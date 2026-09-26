@@ -10,3 +10,8 @@ target_include_directories(agn_llvm_runtime_freebsd PUBLIC ${PROJECT_SOURCE_DIR}
 target_link_libraries(agn_llvm_runtime_freebsd PUBLIC agn_platform_freebsd)
 target_compile_definitions(agn_llvm_runtime_freebsd PRIVATE AGN_TARGET_FREEBSD)
 target_compile_options(agn_llvm_runtime_freebsd PRIVATE -ffreestanding -fno-exceptions -fno-rtti -fno-stack-protector)
+
+if(AGN_WINDOWS_TARGET)
+  agn_add_windows_library(agn_llvm_runtime_windows SOURCES stdio.cpp fileio.cpp strext.cpp
+                          DEFINITIONS -DAGN_TARGET_WINDOWS)
+endif()

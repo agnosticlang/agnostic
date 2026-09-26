@@ -9,6 +9,7 @@ arch=('x86_64')
 url="https://github.com/agnosticlang/agnostic"
 license=('GPL-3.0-or-later' 'Apache-2.0')
 depends=('llvm-libs' 'libgccjit')
+optdepends=('lld: linking programs for --target-os=windows')
 makedepends=('cmake' 'llvm' 'clang' 'libgccjit')
 options=('staticlibs' '!strip')
 source=()
