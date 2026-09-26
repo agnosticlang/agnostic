@@ -126,24 +126,24 @@ Type TypeChecker::namedType(const std::string& name) {
     return Type{TypeKind::Unknown};
 }
 
-Type TypeChecker::parseTypeStr(const std::string& s, size_t& pos) {
+Type TypeChecker::parseTypeStr(const std::string& s, size_t& pos, std::vector<std::string>& unresolved) {
     if (pos < s.size() && s[pos] == '*') {
         pos++;
         Type t;
         t.kind = TypeKind::Ptr;
-        t.pointee = std::make_shared<Type>(parseTypeStr(s, pos));
+        t.pointee = std::make_shared<Type>(parseTypeStr(s, pos, unresolved));
         return t;
     }
     if (s.compare(pos, 5, "func(") == 0) {
         pos += 5;
         std::vector<Type> params;
         while (pos < s.size() && s[pos] != ')') {
-            params.push_back(parseTypeStr(s, pos));
+            params.push_back(parseTypeStr(s, pos, unresolved));
             if (pos < s.size() && s[pos] == ',') pos++;
         }
         if (pos < s.size()) pos++;
         if (s.compare(pos, 2, "->") == 0) pos += 2;
-        Type ret = parseTypeStr(s, pos);
+        Type ret = parseTypeStr(s, pos, unresolved);
 
         Type t;
         t.kind = TypeKind::Function;
@@ -154,27 +154,57 @@ Type TypeChecker::parseTypeStr(const std::string& s, size_t& pos) {
 
     size_t start = pos;
     while (pos < s.size() && s[pos] != ',' && s[pos] != ')') pos++;
-    return namedType(s.substr(start, pos - start));
+    std::string name = s.substr(start, pos - start);
+    Type t = namedType(name);
+    if (t.kind == TypeKind::Unknown) unresolved.push_back(name);
+    return t;
 }
 
-Type TypeChecker::resolveType(const std::string& text) {
+Type TypeChecker::resolveType(const std::string& text, std::vector<std::string>& unresolved) {
     if (text.empty()) return Type{TypeKind::Void};
     size_t pos = 0;
-    return parseTypeStr(text, pos);
+    return parseTypeStr(text, pos, unresolved);
+}
+
+Type TypeChecker::resolveDeclaredType(const std::string& text, const std::string& context) {
+    std::vector<std::string> unresolved;
+    Type t = resolveType(text, unresolved);
+    for (auto& name : unresolved) {
+        addError("unknown type '" + name + "' " + context + didYouMean(name, typeNames()));
+    }
+    return t;
 }
 
 void TypeChecker::registerStruct(const ast::StructDecl& decl) {
     std::vector<std::pair<std::string, Type>> fields;
-    for (auto& f : decl.fields) fields.emplace_back(f.name, resolveType(f.type));
+    for (auto& f : decl.fields) {
+        currentLine_ = f.line;
+        currentColumn_ = f.column;
+        std::string context = "for field '" + f.name + "' of struct '" + decl.name + "'";
+        fields.emplace_back(f.name, resolveDeclaredType(f.type, context));
+    }
     structs_[decl.name] = std::move(fields);
 }
 
 void TypeChecker::registerFunctionSignature(const std::string& key, const ast::Function& func) {
+    currentFunction_ = key;
     FunctionSignature sig;
-    if (func.receiver) sig.receiver = std::make_pair(func.receiver->name, resolveType(func.receiver->type));
-    for (auto& p : func.params) sig.params.emplace_back(p.name, resolveType(p.type));
-    sig.returnType = resolveType(func.returnType);
+    if (func.receiver) {
+        currentLine_ = func.receiver->line;
+        currentColumn_ = func.receiver->column;
+        std::string context = "for receiver '" + func.receiver->name + "'";
+        sig.receiver = std::make_pair(func.receiver->name, resolveDeclaredType(func.receiver->type, context));
+    }
+    for (auto& p : func.params) {
+        currentLine_ = p.line;
+        currentColumn_ = p.column;
+        sig.params.emplace_back(p.name, resolveDeclaredType(p.type, "for parameter '" + p.name + "'"));
+    }
+    currentLine_ = func.line;
+    currentColumn_ = func.column;
+    sig.returnType = resolveDeclaredType(func.returnType, "for the return value");
     functions_[key] = std::move(sig);
+    currentFunction_.clear();
 }
 
 std::optional<Type> TypeChecker::lookupVar(const std::string& name) {
@@ -338,7 +368,8 @@ void TypeChecker::checkStatement(ast::Statement& stmt) {
     currentLine_ = stmt.line;
     currentColumn_ = stmt.column;
     if (auto* n = std::get_if<ast::VarDeclStmt>(&stmt.node)) {
-        Type declared = n->varType.empty() ? Type{TypeKind::Unknown} : resolveType(n->varType);
+        Type declared = n->varType.empty() ? Type{TypeKind::Unknown}
+                                           : resolveDeclaredType(n->varType, "for variable '" + n->name + "'");
         if (n->value) {
             Type exprType = checkExpression(*n->value);
             if (!exprType.canAssignTo(declared)) {
@@ -352,7 +383,7 @@ void TypeChecker::checkStatement(ast::Statement& stmt) {
         return;
     }
     if (auto* n = std::get_if<ast::ArrayDeclStmt>(&stmt.node)) {
-        Type elem = resolveType(n->elementType);
+        Type elem = resolveDeclaredType(n->elementType, "for the elements of array '" + n->name + "'");
         Type arr; arr.kind = TypeKind::Array; arr.elementType = std::make_shared<Type>(elem); arr.arraySize = n->size;
         declareVar(n->name, arr);
         return;
@@ -461,13 +492,13 @@ Type TypeChecker::checkFunctionLiteral(ast::FunctionLiteralExpr& lit) {
 
     std::vector<Type> paramTypes;
     for (auto& p : lit.params) {
-        Type t = resolveType(p.type);
+        Type t = resolveDeclaredType(p.type, "for parameter '" + p.name + "' of a function literal");
         frame.vars[p.name] = t;
         paramTypes.push_back(t);
     }
     scopeStack_.push_back(std::move(frame));
 
-    Type retType = resolveType(lit.returnType);
+    Type retType = resolveDeclaredType(lit.returnType, "for the return value of a function literal");
     returnTypeStack_.push_back(retType);
     int savedLoopDepth = loopDepth_;
     loopDepth_ = 0;
@@ -735,11 +766,7 @@ Type TypeChecker::checkExpression(ast::Expression& expr) {
 
     if (auto* n = std::get_if<ast::CastExpr>(&expr.node)) {
         Type from = checkExpression(*n->operand);
-        Type to = resolveType(n->targetType);
-        if (to.kind == TypeKind::Unknown) {
-            addError("unknown type '" + n->targetType + "' in cast" + didYouMean(n->targetType, typeNames()));
-            return to;
-        }
+        Type to = resolveDeclaredType(n->targetType, "in cast");
         if (!from.canCastTo(to)) {
             addError("cannot cast " + from.toString() + " to " + to.toString() + conversionHint(from, to));
         }

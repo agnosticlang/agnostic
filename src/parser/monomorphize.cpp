@@ -276,7 +276,8 @@ std::string instantiate(const std::string& name, const std::vector<std::string>&
     st.inProgress.insert(mangled);
     std::vector<ast::Parameter> concreteFields;
     for (auto& f : tmpl.fields) {
-        concreteFields.push_back(ast::Parameter{f.name, rewriteTypeString(f.type, st, &subst), false});
+        concreteFields.push_back(
+            ast::Parameter{f.name, rewriteTypeString(f.type, st, &subst), false, f.line, f.column});
     }
     st.inProgress.erase(mangled);
     st.registered.insert(mangled);
@@ -517,9 +518,12 @@ std::string instantiateFunction(const std::string& name, const std::vector<Gener
     ast::Function concrete;
     concrete.name = mangled;
     concrete.isExported = tmpl.isExported;
+    concrete.line = tmpl.line;
+    concrete.column = tmpl.column;
     for (auto& p : tmpl.params) {
         if (p.isComptime) continue;
-        concrete.params.push_back(ast::Parameter{p.name, rewriteTypeString(p.type, st, subst.types), false});
+        concrete.params.push_back(
+            ast::Parameter{p.name, rewriteTypeString(p.type, st, subst.types), false, p.line, p.column});
     }
     concrete.returnType = rewriteTypeString(tmpl.returnType, st, subst.types);
     concrete.body = cloneStmts(tmpl.body);

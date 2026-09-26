@@ -39,6 +39,8 @@ struct Parameter {
     std::string name;
     std::string type;
     bool isComptime = false;
+    size_t line = 0;
+    size_t column = 0;
 };
 
 struct Expression;
@@ -195,6 +197,8 @@ struct Function {
     std::string returnType;
     std::vector<Statement> body;
     bool isExported = false;
+    size_t line = 0;
+    size_t column = 0;
 };
 
 struct StructDecl {

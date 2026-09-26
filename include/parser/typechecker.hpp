@@ -58,7 +58,10 @@ public:
     const std::vector<TypeError>& errors() const { return errors_; }
     void printErrors() const;
 
-    Type resolveTypeString(const std::string& text) { return resolveType(text); }
+    Type resolveTypeString(const std::string& text) {
+        std::vector<std::string> unresolved;
+        return resolveType(text, unresolved);
+    }
     const std::unordered_map<std::string, std::vector<std::pair<std::string, Type>>>& structs() const { return structs_; }
     const std::unordered_map<std::string, FunctionSignature>& functions() const { return functions_; }
 
@@ -69,8 +72,9 @@ private:
         std::vector<std::string>* captureSet = nullptr;
     };
 
-    Type resolveType(const std::string& text);
-    Type parseTypeStr(const std::string& s, size_t& pos);
+    Type resolveType(const std::string& text, std::vector<std::string>& unresolved);
+    Type resolveDeclaredType(const std::string& text, const std::string& context);
+    Type parseTypeStr(const std::string& s, size_t& pos, std::vector<std::string>& unresolved);
     Type namedType(const std::string& name);
 
     void registerStruct(const ast::StructDecl& decl);

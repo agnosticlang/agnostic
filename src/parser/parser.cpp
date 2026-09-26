@@ -206,11 +206,13 @@ std::vector<ast::Parameter> Parser::parseParamList() {
         }
         if (current().kind != TokenKind::Identifier) error("expected parameter name");
         std::string name = current().text;
+        size_t line = current().line;
+        size_t column = current().column;
         advance();
         if (current().kind == TokenKind::Colon) advance();
         auto type = tryParseType();
         if (!type) error("expected parameter type");
-        params.push_back(ast::Parameter{name, *type, isComptime});
+        params.push_back(ast::Parameter{name, *type, isComptime, line, column});
         if (current().kind == TokenKind::Comma) advance();
     }
     return params;
@@ -251,15 +253,19 @@ ast::Function Parser::parseFunction() {
         advance();
         if (current().kind != TokenKind::Identifier) error("expected receiver name");
         std::string recvName = current().text;
+        size_t recvLine = current().line;
+        size_t recvColumn = current().column;
         advance();
         auto recvType = tryParseType();
         if (!recvType) error("expected receiver type");
         expect(TokenKind::RightParen);
-        receiver = ast::Parameter{recvName, *recvType};
+        receiver = ast::Parameter{recvName, *recvType, false, recvLine, recvColumn};
     }
 
     if (current().kind != TokenKind::Identifier) error("expected function name");
     std::string name = current().text;
+    size_t line = current().line;
+    size_t column = current().column;
     advance();
 
     expect(TokenKind::LeftParen);
@@ -281,6 +287,8 @@ ast::Function Parser::parseFunction() {
     func.returnType = returnType;
     func.body = std::move(body);
     func.isExported = isExported;
+    func.line = line;
+    func.column = column;
     return func;
 }
 
@@ -310,11 +318,13 @@ ast::StructDecl Parser::parseStructDecl() {
     while (current().kind != TokenKind::RightBrace) {
         if (current().kind != TokenKind::Identifier) error("expected field name");
         std::string fieldName = current().text;
+        size_t fieldLine = current().line;
+        size_t fieldColumn = current().column;
         advance();
         if (current().kind == TokenKind::Colon) advance();
         auto type = tryParseType();
         if (!type) error("expected field type");
-        fields.push_back(ast::Parameter{fieldName, *type});
+        fields.push_back(ast::Parameter{fieldName, *type, false, fieldLine, fieldColumn});
         if (current().kind == TokenKind::Comma) advance();
         skipNewlines();
     }

@@ -209,5 +209,11 @@ expect_reject int_condition "scripts/testdata/reject/int_condition.agn" "conditi
 expect_reject bool_int_compare "scripts/testdata/reject/bool_int_compare.agn" "cannot compare bool with i64"
 expect_reject cast_to_bool "scripts/testdata/reject/cast_to_bool.agn" "cannot cast i64 to bool"
 expect_reject ptr_cast_width "scripts/testdata/reject/ptr_cast_width.agn" "cannot cast *i64 to i32"
+expect_reject unknown_var_type "scripts/testdata/reject/unknown_var_type.agn" "unknown type 'i46' for variable 'x'"
+expect_reject unknown_param_type "scripts/testdata/reject/unknown_param_type.agn" "unknown type 'strng' for parameter 'a' (did you mean 'string'?)"
+expect_reject unknown_return_type "scripts/testdata/reject/unknown_return_type.agn" "unknown type 'boool' for the return value"
+expect_reject unknown_field_type "scripts/testdata/reject/unknown_field_type.agn" "unknown type 'i46' for field 'x' of struct 'Point'"
+expect_reject unknown_array_type "scripts/testdata/reject/unknown_array_type.agn" "unknown type 'u9' for the elements of array 'arr'"
+expect_reject unknown_pointee_type "scripts/testdata/reject/unknown_pointee_type.agn" "unknown type 'flot' for variable 'p'"
 
 exit $fail
