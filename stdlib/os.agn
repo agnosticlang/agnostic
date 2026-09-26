@@ -27,7 +27,7 @@ pub fn Close(fd int) int {
 }
 
 // value is the number of bytes read
-pub fn ReadFd(fd int, buffer int, maxlen int) Option<int> {
+pub fn ReadFd(fd int, buffer *u8, maxlen int) Option<int> {
     return Option<int>{some: false, value: 0}
 }
 

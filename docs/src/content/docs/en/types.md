@@ -34,15 +34,29 @@ There is no `char` type; a byte read from a string index or `stdio.ReadChar` is 
 
 ## Pointers
 
-A pointer type only arises from taking the address of something with `&`; there is no syntax to write a pointer type directly (no `*T` in a type position). Because of this, a pointer-typed variable must use inferred declaration:
+`&x` takes the address of `x`. A pointer type is written `*T`, and `*p` reads or writes the value it points to:
 
 ```agn
-var x int = 5
-var p = &x   // p has type "pointer to i64"
-*p = 99      // x is now 99
+func set(p *int, v int) {
+    *p = v
+}
+
+func main() {
+    var x int = 5
+    var p *int = &x
+    *p = 99
+    set(&x, 7)
+}
 ```
 
-Pointers are only supported under `--backend=llvm`. `--backend=nvm` rejects `&` at compile time: ordinary local variables in the Novaria Virtual Machine's bytecode are frame-relative stack slots, not addressable memory.
+`*[N]T` converts implicitly to `*T`, a pointer to the first element. This is how a byte array is passed as a buffer:
+
+```agn
+var buf [64]u8
+var n Option<int> = os.ReadFd(fd, &buf, 64)
+```
+
+Pointers are supported under `--backend=llvm` and `--backend=gcc`. `--backend=nvm` rejects `&` at compile time: ordinary local variables in the Novaria Virtual Machine's bytecode are frame-relative stack slots, not addressable memory.
 
 ## Arrays
 

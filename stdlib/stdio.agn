@@ -32,7 +32,7 @@ pub fn ReadChar() int {
 }
 
 // returns bytes read
-pub fn ReadLine(buffer int, maxlen int) int {
+pub fn ReadLine(buffer *u8, maxlen int) int {
     return 0
 }
 

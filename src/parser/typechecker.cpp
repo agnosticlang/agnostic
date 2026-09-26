@@ -44,6 +44,10 @@ bool Type::canAssignTo(const Type& other) const {
     if (*this == other) return true;
     if (isNumeric() && other.isNumeric()) return true;
     if (kind == TypeKind::Ptr && other.isNumeric()) return true;
+    if (kind == TypeKind::Ptr && other.kind == TypeKind::Ptr && pointee->kind == TypeKind::Array &&
+        *pointee->elementType == *other.pointee) {
+        return true;
+    }
     if (kind == TypeKind::Ptr && other.kind == TypeKind::String) return true;
     if (kind == TypeKind::Bool && other.isNumeric()) return true;
     if (other.kind == TypeKind::Bool && isNumeric()) return true;
@@ -101,6 +105,13 @@ Type TypeChecker::namedType(const std::string& name) {
 }
 
 Type TypeChecker::parseTypeStr(const std::string& s, size_t& pos) {
+    if (pos < s.size() && s[pos] == '*') {
+        pos++;
+        Type t;
+        t.kind = TypeKind::Ptr;
+        t.pointee = std::make_shared<Type>(parseTypeStr(s, pos));
+        return t;
+    }
     if (s.compare(pos, 5, "func(") == 0) {
         pos += 5;
         std::vector<Type> params;

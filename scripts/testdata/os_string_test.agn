@@ -41,7 +41,7 @@ func main() {
     os.Close(fd.value)
 
     var rfd Option<int> = os.OpenRead("/tmp/agn_os_string_test.txt")
-    var buf [16]int
+    var buf [16]u8
     var n Option<int> = os.ReadFd(rfd.value, &buf, 15)
     os.Close(rfd.value)
     stdio.Println(n.some)

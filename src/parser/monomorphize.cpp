@@ -283,6 +283,10 @@ std::string instantiate(const std::string& name, const std::vector<std::string>&
 bool isIdentChar(char c) { return std::isalnum(static_cast<unsigned char>(c)) || c == '_'; }
 
 std::string rewriteOne(const std::string& s, size_t& pos, MonoState& st, const Subst* subst) {
+    if (pos < s.size() && s[pos] == '*') {
+        pos++;
+        return "*" + rewriteOne(s, pos, st, subst);
+    }
     if (s.compare(pos, 5, "func(") == 0) {
         pos += 5;
         std::string out = "func(";

@@ -20,7 +20,7 @@ description: result, stdio, math, string, os и novaria.
 | `PrintChar` | `(ch int)` | пишет один байт |
 | `ReadInt` | `() int` | читает десятичное целое из stdin |
 | `ReadChar` | `() int` | читает один байт из stdin |
-| `ReadLine` | `(buffer int, maxlen int) int` | читает строку в буфер в куче, возвращает число байт |
+| `ReadLine` | `(buffer *u8, maxlen int) int` | читает строку в `buffer`, возвращает число байт |
 | `Flush` | `()` | ничего не делает; вывод небуферизован |
 
 `Print` и `Println` принимают только `int`; передача `string` — ошибка типов, используйте `PrintStr`/`PrintlnStr`.
@@ -78,11 +78,11 @@ description: result, stdio, math, string, os и novaria.
 | `OpenRead` | `(path string) Option<int>` | value — файловый дескриптор; `some=false` при ошибке |
 | `OpenCreate` | `(path string) Option<int>` | создать/обрезать для записи; value — дескриптор, `some=false` при ошибке |
 | `Close` | `(fd int) int` | |
-| `ReadFd` | `(fd int, buffer int, maxlen int) Option<int>` | читает в адрес буфера в куче, как `stdio.ReadLine`; value — число прочитанных байт, `some=false` при ошибке |
+| `ReadFd` | `(fd int, buffer *u8, maxlen int) Option<int>` | читает в `buffer`, как `stdio.ReadLine`; value — число прочитанных байт, `some=false` при ошибке |
 | `WriteFd` | `(fd int, data string) Option<int>` | value — число записанных байт, `some=false` при ошибке |
 | `Exit` | `(code int)` | немедленно завершает процесс, не выполняя оставшийся код вызывающей функции |
 
-Параметр `buffer` у `ReadFd` (и у `stdio.ReadLine`) типизирован как `int`, но принимает указатель, полученный через `&arr`, напрямую — значение-указатель, присваиваемое параметру `int`, приводится к своему адресу.
+Для массива `buf` типа `[N]u8` передавайте `&buf` в параметр `buffer` у `ReadFd` и `stdio.ReadLine`. См. [Указатели](/ru/types/#указатели).
 
 `OpenRead`, `OpenCreate`, `ReadFd` и `WriteFd` возвращают `Option<int>` (см. [Обобщённые структуры](/ru/structs/#обобщённые-структуры-дженерики)) вместо сырого сентинела: `some` равен `true` при успехе и `false` при ошибке, а `value` содержит дескриптор или число байт только когда `some` равен `true` — проверяйте `some` перед тем, как доверять `value`.
 

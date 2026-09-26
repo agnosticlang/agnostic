@@ -20,7 +20,7 @@ Every function in these modules is a compiler intrinsic: the body written in the
 | `PrintChar` | `(ch int)` | writes one byte |
 | `ReadInt` | `() int` | reads a decimal integer from stdin |
 | `ReadChar` | `() int` | reads one byte from stdin |
-| `ReadLine` | `(buffer int, maxlen int) int` | reads a line into a heap buffer, returns the byte count |
+| `ReadLine` | `(buffer *u8, maxlen int) int` | reads a line into `buffer`, returns the byte count |
 | `Flush` | `()` | no-op; output is unbuffered |
 
 `Print` and `Println` only accept `int`; passing a `string` is a type error, use `PrintStr`/`PrintlnStr`.
@@ -78,11 +78,11 @@ File descriptors and command-line arguments. Compile errors under `--backend=nvm
 | `OpenRead` | `(path string) Option<int>` | value is the file descriptor; `some=false` on error |
 | `OpenCreate` | `(path string) Option<int>` | create/truncate for writing; value is the file descriptor, `some=false` on error |
 | `Close` | `(fd int) int` | |
-| `ReadFd` | `(fd int, buffer int, maxlen int) Option<int>` | reads into a heap buffer address, like `stdio.ReadLine`; value is bytes read, `some=false` on error |
+| `ReadFd` | `(fd int, buffer *u8, maxlen int) Option<int>` | reads into `buffer`, like `stdio.ReadLine`; value is bytes read, `some=false` on error |
 | `WriteFd` | `(fd int, data string) Option<int>` | value is bytes written, `some=false` on error |
 | `Exit` | `(code int)` | terminates the process immediately, bypassing any remaining code in the caller |
 
-`ReadFd`'s (and `stdio.ReadLine`'s) `buffer` parameter is typed `int` but accepts the pointer produced by `&arr` directly — a pointer value assigned to an `int` parameter decays to its address.
+For a `[N]u8` array `buf`, pass `&buf` as the `buffer` of `ReadFd` and `stdio.ReadLine`. See [Pointers](/en/types/#pointers).
 
 `OpenRead`, `OpenCreate`, `ReadFd`, and `WriteFd` return `Option<int>` (see [Generic structs](/en/structs/#generic-structs)) instead of a raw sentinel: `some` is `true` on success and `false` on failure, and `value` holds the file descriptor or byte count only when `some` is `true` — check `some` before trusting `value`.
 

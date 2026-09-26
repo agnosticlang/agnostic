@@ -96,6 +96,12 @@ ast::Program Parser::parse() {
 }
 
 std::optional<std::string> Parser::tryParseType() {
+    if (current().kind == TokenKind::Star) {
+        advance();
+        auto pointee = tryParseType();
+        if (!pointee) error("expected pointee type after '*'");
+        return "*" + *pointee;
+    }
     if (current().kind == TokenKind::Func) return parseFunctionTypeString();
     if (current().kind == TokenKind::Identifier) {
         std::string t = current().text;
