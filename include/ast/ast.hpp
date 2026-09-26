@@ -217,7 +217,4 @@ struct Program {
     std::unordered_map<std::string, Module> modules;
 };
 
-// TODO: generics
-// TODO: pattern matching
-
 } // namespace agn::ast
