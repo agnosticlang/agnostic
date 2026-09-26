@@ -28,8 +28,10 @@ struct Type {
     std::string structName;
 
     bool isNumeric() const;
+    bool isInteger() const { return isNumeric() && kind != TypeKind::F64; }
     bool isFloat() const { return kind == TypeKind::F64; }
     bool canAssignTo(const Type& other) const;
+    bool canCastTo(const Type& other) const;
     std::string toString() const;
     bool operator==(const Type& other) const;
 };
@@ -88,6 +90,7 @@ private:
     std::vector<std::string> visibleVarNames() const;
     std::vector<std::string> functionNames() const;
     std::vector<std::string> structNames() const;
+    std::vector<std::string> typeNames() const;
     std::vector<std::string> fieldNames(const std::string& structName) const;
 
     std::unordered_map<std::string, std::vector<std::pair<std::string, Type>>> structs_;

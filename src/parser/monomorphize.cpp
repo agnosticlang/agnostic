@@ -131,6 +131,11 @@ ast::Expression cloneExpr(const ast::Expression& e) {
                 ast::DerefExpr copy;
                 copy.operand = std::make_unique<ast::Expression>(cloneExpr(*node.operand));
                 out.node = std::move(copy);
+            } else if constexpr (std::is_same_v<T, ast::CastExpr>) {
+                ast::CastExpr copy;
+                copy.operand = std::make_unique<ast::Expression>(cloneExpr(*node.operand));
+                copy.targetType = node.targetType;
+                out.node = std::move(copy);
             } else if constexpr (std::is_same_v<T, ast::EvalExpr>) {
                 ast::EvalExpr copy;
                 copy.instruction = std::make_unique<ast::Expression>(cloneExpr(*node.instruction));
@@ -450,6 +455,9 @@ void rewriteExpr(ast::Expression& e, MonoState& st, const GenSubst& subst) {
                 rewriteExpr(*node.operand, st, subst);
             } else if constexpr (std::is_same_v<T, ast::DerefExpr>) {
                 rewriteExpr(*node.operand, st, subst);
+            } else if constexpr (std::is_same_v<T, ast::CastExpr>) {
+                rewriteExpr(*node.operand, st, subst);
+                node.targetType = rewriteTypeString(node.targetType, st, subst.types);
             } else if constexpr (std::is_same_v<T, ast::EvalExpr>) {
                 rewriteExpr(*node.instruction, st, subst);
             } else if constexpr (std::is_same_v<T, ast::FieldAccessExpr>) {

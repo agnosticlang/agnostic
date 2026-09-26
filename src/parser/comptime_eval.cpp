@@ -102,6 +102,44 @@ std::optional<ComptimeValue> ComptimeEvaluator::callFunction(const std::string& 
     return result;
 }
 
+std::optional<ComptimeValue> ComptimeEvaluator::castValue(const ComptimeValue& value, const std::string& type) {
+    using Kind = ComptimeValue::Kind;
+    std::string unsupported = "cannot evaluate at compile time: unsupported cast to '" + type + "'";
+    if (type == "f64" || type == "float") {
+        if (value.isNumeric()) return ComptimeValue::makeF64(value.asDouble());
+        fail(unsupported);
+        return std::nullopt;
+    }
+    if (type == "bool" || type == "string") {
+        if (value.kind == (type == "bool" ? Kind::Bool : Kind::String)) return value;
+        fail(unsupported);
+        return std::nullopt;
+    }
+
+    int64_t i = 0;
+    switch (value.kind) {
+        case Kind::I64: i = value.i; break;
+        case Kind::Bool: i = value.b ? 1 : 0; break;
+        case Kind::F64:
+            if (!(value.f >= -9223372036854775808.0 && value.f < 9223372036854775808.0)) {
+                fail("cannot evaluate at compile time: float value out of range for '" + type + "'");
+                return std::nullopt;
+            }
+            i = static_cast<int64_t>(value.f);
+            break;
+        default:
+            fail(unsupported);
+            return std::nullopt;
+    }
+    if (type == "i64" || type == "int" || type == "u64") return ComptimeValue::makeI64(i);
+    if (type == "i32") return ComptimeValue::makeI64(static_cast<int32_t>(i));
+    if (type == "u32") return ComptimeValue::makeI64(static_cast<uint32_t>(i));
+    if (type == "i8") return ComptimeValue::makeI64(static_cast<int8_t>(i));
+    if (type == "u8") return ComptimeValue::makeI64(static_cast<uint8_t>(i));
+    fail(unsupported);
+    return std::nullopt;
+}
+
 std::optional<ComptimeValue> ComptimeEvaluator::eval(const ast::Expression& expr) {
     if (auto* n = std::get_if<ast::NumberExpr>(&expr.node)) return ComptimeValue::makeI64(n->value);
     if (auto* n = std::get_if<ast::FloatExpr>(&expr.node)) return ComptimeValue::makeF64(n->value);
@@ -115,6 +153,12 @@ std::optional<ComptimeValue> ComptimeEvaluator::eval(const ast::Expression& expr
         if (auto v = lookup(n->name)) return v;
         fail("cannot evaluate at compile time: '" + n->name + "' is not a compile-time constant");
         return std::nullopt;
+    }
+
+    if (auto* n = std::get_if<ast::CastExpr>(&expr.node)) {
+        auto v = eval(*n->operand);
+        if (!v) return std::nullopt;
+        return castValue(*v, n->targetType);
     }
 
     if (auto* n = std::get_if<ast::UnaryExpr>(&expr.node)) {

@@ -55,6 +55,7 @@ private:
     ast::Expression parseShift();
     ast::Expression parseAdditive();
     ast::Expression parseMultiplicative();
+    ast::Expression parseCast();
     ast::Expression parseUnary();
     ast::Expression parsePrimary();
     ast::Expression parseTemplateString(const std::string& s);

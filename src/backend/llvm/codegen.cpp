@@ -160,6 +160,15 @@ struct Codegen::Impl {
         return v.value;
     }
 
+    llvm::Value* castValue(const TypedValue& v, const Type& target) {
+        bool fromAddress = v.type.kind == TypeKind::Ptr || v.type.kind == TypeKind::String;
+        bool toAddress = target.kind == TypeKind::Ptr || target.kind == TypeKind::String;
+        if (fromAddress && toAddress) return v.value;
+        if (fromAddress) return builder.CreatePtrToInt(v.value, llvmType(target));
+        if (toAddress) return builder.CreateIntToPtr(v.value, ptrTy);
+        return coerceValue(v, target);
+    }
+
     llvm::Value* toCond(const TypedValue& v) {
         if (v.type.kind == TypeKind::Bool) return v.value;
         return builder.CreateICmpNE(v.value, llvm::Constant::getNullValue(v.value->getType()));
@@ -381,6 +390,8 @@ struct Codegen::Impl {
         } else if (auto* n = std::get_if<ast::AddressOfExpr>(&expr.node)) {
             collectCapturedExpr(*n->operand, out);
         } else if (auto* n = std::get_if<ast::DerefExpr>(&expr.node)) {
+            collectCapturedExpr(*n->operand, out);
+        } else if (auto* n = std::get_if<ast::CastExpr>(&expr.node)) {
             collectCapturedExpr(*n->operand, out);
         } else if (auto* n = std::get_if<ast::EvalExpr>(&expr.node)) {
             collectCapturedExpr(*n->instruction, out);
@@ -1009,6 +1020,11 @@ struct Codegen::Impl {
             Type pointee = v.type.pointee ? *v.type.pointee : Type{TypeKind::I64};
             auto* loaded = builder.CreateLoad(llvmType(pointee), v.value);
             return TypedValue{loaded, pointee};
+        }
+        if (auto* n = std::get_if<ast::CastExpr>(&expr.node)) {
+            auto v = genExpr(*n->operand);
+            Type target = checker.resolveTypeString(n->targetType);
+            return TypedValue{castValue(v, target), target};
         }
         if (std::get_if<ast::EvalExpr>(&expr.node)) {
             std::fprintf(stderr, "error: 'eval' is not supported by the llvm backend "

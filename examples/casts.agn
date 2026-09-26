@@ -1,0 +1,26 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 AnmiTaliDev <anmitalidev@nuros.org>
+
+package main
+
+import "stdio"
+
+func main() {
+    var big int = 300
+    stdio.Println(big as u8)
+    stdio.Println(-1 as u8)
+    stdio.Println(200 as i8)
+    stdio.Println(3.9 as int)
+    stdio.Println(true as int)
+
+    var x int = 42
+    var addr u64 = &x as u64
+    var p *int = addr as *int
+    stdio.Println(*p)
+
+    var bytes [3]u8
+    bytes[0] = 104
+    bytes[1] = 105
+    bytes[2] = 0
+    stdio.PrintlnStr(&bytes as string)
+}

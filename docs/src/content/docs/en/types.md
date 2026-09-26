@@ -78,6 +78,30 @@ See [Structs](/en/structs/).
 
 Written `func(T1, T2) -> R`, or `func() -> R` with no parameters, or `func(T1)` with an inferred `void` return. See [Functions and Closures](/en/functions/).
 
+## Casts
+
+`expr as T` converts a value explicitly:
+
+```agn
+var big int = 300
+var low u8 = big as u8
+var half = 7 as f64 / 2.0
+var flag int = true as int
+var addr u64 = &big as u64
+```
+
+| From | To | Result |
+|---|---|---|
+| integer | integer | truncated to the target width, or extended: sign-extended from a signed type, zero-extended from an unsigned one |
+| integer | `f64` | the nearest `f64` value |
+| `f64` | integer | truncated toward zero; the value must fit in the target type |
+| `bool` | integer | `0` or `1` |
+| pointer or `string` | pointer or `string` | the same address with the new type |
+| pointer | `i64` or `u64` | the address |
+| `i64` or `u64` | pointer | the address |
+
+`as` binds tighter than the binary operators and looser than the unary ones: `-x as u8` is `(-x) as u8`, and `a + b as i64` is `a + (b as i64)`. Under `--backend=nvm`, casts to `f64` and to pointer types are compile errors.
+
 ## Type checking rules
 
 Types are checked, not coerced across boundaries that would lose information silently. Assignment between different integer widths is permitted where the typechecker's `canAssignTo` rule allows it (unsigned and signed integer kinds interconvert freely at the type-check level; the emitted code truncates or extends as needed for the target width). There is no implicit conversion between `string` and any numeric type.

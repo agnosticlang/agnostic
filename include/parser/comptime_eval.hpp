@@ -54,6 +54,7 @@ private:
     void bind(const std::string& name, ComptimeValue value);
     bool assign(const std::string& name, ComptimeValue value);
     std::optional<ComptimeValue> callFunction(const std::string& name, std::vector<ComptimeValue> args);
+    std::optional<ComptimeValue> castValue(const ComptimeValue& value, const std::string& type);
     bool consumeStep();
     void fail(const std::string& message);
 

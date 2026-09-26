@@ -95,6 +95,9 @@ func matchKeyword(text string) int {
     if string.compare(text, "continue") == 0 {
         return 12
     }
+    if string.compare(text, "as") == 0 {
+        return 13
+    }
     return -1
 }
 
@@ -107,17 +110,17 @@ func readWord(source string, pos int) TokenInfo {
     var text string = string.substr(source, pos, end - pos)
 
     if string.compare(text, "true") == 0 {
-        return TokenInfo{kind: 17, end: end, number: 1, floatValue: 0.0, text: ""}
+        return TokenInfo{kind: 18, end: end, number: 1, floatValue: 0.0, text: ""}
     }
     if string.compare(text, "false") == 0 {
-        return TokenInfo{kind: 17, end: end, number: 0, floatValue: 0.0, text: ""}
+        return TokenInfo{kind: 18, end: end, number: 0, floatValue: 0.0, text: ""}
     }
 
     var kw int = matchKeyword(text)
     if kw >= 0 {
         return TokenInfo{kind: kw, end: end, number: 0, floatValue: 0.0, text: ""}
     }
-    return TokenInfo{kind: 13, end: end, number: 0, floatValue: 0.0, text: text}
+    return TokenInfo{kind: 14, end: end, number: 0, floatValue: 0.0, text: text}
 }
 
 func readNumberOrFloat(source string, pos int) TokenInfo {
@@ -132,10 +135,10 @@ func readNumberOrFloat(source string, pos int) TokenInfo {
             fend = fend + 1
         }
         var ftext string = string.substr(source, pos, fend - pos)
-        return TokenInfo{kind: 15, end: fend, number: 0, floatValue: FloatFromText(ftext), text: ""}
+        return TokenInfo{kind: 16, end: fend, number: 0, floatValue: FloatFromText(ftext), text: ""}
     }
     var itext string = string.substr(source, pos, end - pos)
-    return TokenInfo{kind: 14, end: end, number: IntFromText(itext), floatValue: 0.0, text: ""}
+    return TokenInfo{kind: 15, end: end, number: IntFromText(itext), floatValue: 0.0, text: ""}
 }
 
 pub fn IntFromText(text string) int {
@@ -207,117 +210,117 @@ func readStringLiteral(source string, pos int) TokenInfo {
     out[outLen] = 0
     var stackText string = &out
     var text string = string.concat(stackText, "")
-    return TokenInfo{kind: 16, end: i, number: 0, floatValue: 0.0, text: text}
+    return TokenInfo{kind: 17, end: i, number: 0, floatValue: 0.0, text: text}
 }
 
 func classify(source string, pos int) TokenInfo {
     var n int = string.len(source)
     if pos >= n {
-        return TokenInfo{kind: 52, end: pos, number: 0, floatValue: 0.0, text: ""}
+        return TokenInfo{kind: 53, end: pos, number: 0, floatValue: 0.0, text: ""}
     }
     var c int = byteAt(source, pos)
 
     if c == 10 {
-        return TokenInfo{kind: 51, end: pos + 1, number: 0, floatValue: 0.0, text: ""}
+        return TokenInfo{kind: 52, end: pos + 1, number: 0, floatValue: 0.0, text: ""}
     }
     if c == 43 {
         if pos + 1 < n && byteAt(source, pos + 1) == 43 {
-            return TokenInfo{kind: 49, end: pos + 2, number: 0, floatValue: 0.0, text: ""}
-        }
-        return TokenInfo{kind: 18, end: pos + 1, number: 0, floatValue: 0.0, text: ""}
-    }
-    if c == 45 {
-        if pos + 1 < n && byteAt(source, pos + 1) == 62 {
-            return TokenInfo{kind: 47, end: pos + 2, number: 0, floatValue: 0.0, text: ""}
+            return TokenInfo{kind: 50, end: pos + 2, number: 0, floatValue: 0.0, text: ""}
         }
         return TokenInfo{kind: 19, end: pos + 1, number: 0, floatValue: 0.0, text: ""}
     }
-    if c == 42 {
+    if c == 45 {
+        if pos + 1 < n && byteAt(source, pos + 1) == 62 {
+            return TokenInfo{kind: 48, end: pos + 2, number: 0, floatValue: 0.0, text: ""}
+        }
         return TokenInfo{kind: 20, end: pos + 1, number: 0, floatValue: 0.0, text: ""}
     }
-    if c == 47 {
+    if c == 42 {
         return TokenInfo{kind: 21, end: pos + 1, number: 0, floatValue: 0.0, text: ""}
     }
-    if c == 37 {
+    if c == 47 {
         return TokenInfo{kind: 22, end: pos + 1, number: 0, floatValue: 0.0, text: ""}
+    }
+    if c == 37 {
+        return TokenInfo{kind: 23, end: pos + 1, number: 0, floatValue: 0.0, text: ""}
     }
     if c == 61 {
         if pos + 1 < n && byteAt(source, pos + 1) == 61 {
-            return TokenInfo{kind: 24, end: pos + 2, number: 0, floatValue: 0.0, text: ""}
+            return TokenInfo{kind: 25, end: pos + 2, number: 0, floatValue: 0.0, text: ""}
         }
-        return TokenInfo{kind: 23, end: pos + 1, number: 0, floatValue: 0.0, text: ""}
+        return TokenInfo{kind: 24, end: pos + 1, number: 0, floatValue: 0.0, text: ""}
     }
     if c == 33 {
         if pos + 1 < n && byteAt(source, pos + 1) == 61 {
-            return TokenInfo{kind: 25, end: pos + 2, number: 0, floatValue: 0.0, text: ""}
-        }
-        return TokenInfo{kind: 32, end: pos + 1, number: 0, floatValue: 0.0, text: ""}
-    }
-    if c == 60 {
-        if pos + 1 < n && byteAt(source, pos + 1) == 60 {
-            return TokenInfo{kind: 35, end: pos + 2, number: 0, floatValue: 0.0, text: ""}
-        }
-        if pos + 1 < n && byteAt(source, pos + 1) == 61 {
-            return TokenInfo{kind: 27, end: pos + 2, number: 0, floatValue: 0.0, text: ""}
-        }
-        return TokenInfo{kind: 26, end: pos + 1, number: 0, floatValue: 0.0, text: ""}
-    }
-    if c == 62 {
-        if pos + 1 < n && byteAt(source, pos + 1) == 62 {
-            return TokenInfo{kind: 36, end: pos + 2, number: 0, floatValue: 0.0, text: ""}
-        }
-        if pos + 1 < n && byteAt(source, pos + 1) == 61 {
-            return TokenInfo{kind: 29, end: pos + 2, number: 0, floatValue: 0.0, text: ""}
-        }
-        return TokenInfo{kind: 28, end: pos + 1, number: 0, floatValue: 0.0, text: ""}
-    }
-    if c == 38 {
-        if pos + 1 < n && byteAt(source, pos + 1) == 38 {
-            return TokenInfo{kind: 30, end: pos + 2, number: 0, floatValue: 0.0, text: ""}
-        }
-        return TokenInfo{kind: 48, end: pos + 1, number: 0, floatValue: 0.0, text: ""}
-    }
-    if c == 124 {
-        if pos + 1 < n && byteAt(source, pos + 1) == 124 {
-            return TokenInfo{kind: 31, end: pos + 2, number: 0, floatValue: 0.0, text: ""}
+            return TokenInfo{kind: 26, end: pos + 2, number: 0, floatValue: 0.0, text: ""}
         }
         return TokenInfo{kind: 33, end: pos + 1, number: 0, floatValue: 0.0, text: ""}
     }
-    if c == 94 {
+    if c == 60 {
+        if pos + 1 < n && byteAt(source, pos + 1) == 60 {
+            return TokenInfo{kind: 36, end: pos + 2, number: 0, floatValue: 0.0, text: ""}
+        }
+        if pos + 1 < n && byteAt(source, pos + 1) == 61 {
+            return TokenInfo{kind: 28, end: pos + 2, number: 0, floatValue: 0.0, text: ""}
+        }
+        return TokenInfo{kind: 27, end: pos + 1, number: 0, floatValue: 0.0, text: ""}
+    }
+    if c == 62 {
+        if pos + 1 < n && byteAt(source, pos + 1) == 62 {
+            return TokenInfo{kind: 37, end: pos + 2, number: 0, floatValue: 0.0, text: ""}
+        }
+        if pos + 1 < n && byteAt(source, pos + 1) == 61 {
+            return TokenInfo{kind: 30, end: pos + 2, number: 0, floatValue: 0.0, text: ""}
+        }
+        return TokenInfo{kind: 29, end: pos + 1, number: 0, floatValue: 0.0, text: ""}
+    }
+    if c == 38 {
+        if pos + 1 < n && byteAt(source, pos + 1) == 38 {
+            return TokenInfo{kind: 31, end: pos + 2, number: 0, floatValue: 0.0, text: ""}
+        }
+        return TokenInfo{kind: 49, end: pos + 1, number: 0, floatValue: 0.0, text: ""}
+    }
+    if c == 124 {
+        if pos + 1 < n && byteAt(source, pos + 1) == 124 {
+            return TokenInfo{kind: 32, end: pos + 2, number: 0, floatValue: 0.0, text: ""}
+        }
         return TokenInfo{kind: 34, end: pos + 1, number: 0, floatValue: 0.0, text: ""}
     }
-    if c == 40 {
-        return TokenInfo{kind: 37, end: pos + 1, number: 0, floatValue: 0.0, text: ""}
+    if c == 94 {
+        return TokenInfo{kind: 35, end: pos + 1, number: 0, floatValue: 0.0, text: ""}
     }
-    if c == 41 {
+    if c == 40 {
         return TokenInfo{kind: 38, end: pos + 1, number: 0, floatValue: 0.0, text: ""}
     }
-    if c == 123 {
+    if c == 41 {
         return TokenInfo{kind: 39, end: pos + 1, number: 0, floatValue: 0.0, text: ""}
     }
-    if c == 125 {
+    if c == 123 {
         return TokenInfo{kind: 40, end: pos + 1, number: 0, floatValue: 0.0, text: ""}
     }
-    if c == 91 {
+    if c == 125 {
         return TokenInfo{kind: 41, end: pos + 1, number: 0, floatValue: 0.0, text: ""}
     }
-    if c == 93 {
+    if c == 91 {
         return TokenInfo{kind: 42, end: pos + 1, number: 0, floatValue: 0.0, text: ""}
     }
-    if c == 44 {
+    if c == 93 {
         return TokenInfo{kind: 43, end: pos + 1, number: 0, floatValue: 0.0, text: ""}
     }
-    if c == 59 {
+    if c == 44 {
         return TokenInfo{kind: 44, end: pos + 1, number: 0, floatValue: 0.0, text: ""}
     }
-    if c == 58 {
+    if c == 59 {
         return TokenInfo{kind: 45, end: pos + 1, number: 0, floatValue: 0.0, text: ""}
     }
-    if c == 46 {
+    if c == 58 {
         return TokenInfo{kind: 46, end: pos + 1, number: 0, floatValue: 0.0, text: ""}
     }
+    if c == 46 {
+        return TokenInfo{kind: 47, end: pos + 1, number: 0, floatValue: 0.0, text: ""}
+    }
     if c == 36 {
-        return TokenInfo{kind: 50, end: pos + 1, number: 0, floatValue: 0.0, text: ""}
+        return TokenInfo{kind: 51, end: pos + 1, number: 0, floatValue: 0.0, text: ""}
     }
     if c == 34 {
         return readStringLiteral(source, pos + 1)

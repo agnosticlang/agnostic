@@ -298,6 +298,8 @@ struct GccBackend::Impl {
             collectCapturedExpr(*n->operand, out);
         } else if (auto* n = std::get_if<ast::DerefExpr>(&expr.node)) {
             collectCapturedExpr(*n->operand, out);
+        } else if (auto* n = std::get_if<ast::CastExpr>(&expr.node)) {
+            collectCapturedExpr(*n->operand, out);
         } else if (auto* n = std::get_if<ast::EvalExpr>(&expr.node)) {
             collectCapturedExpr(*n->instruction, out);
         } else if (auto* n = std::get_if<ast::FieldAccessExpr>(&expr.node)) {
@@ -622,6 +624,15 @@ struct GccBackend::Impl {
             return materialize(gcc_jit_context_new_cast(ctxt, loc, v.value, gccType(target)), gccType(target));
         }
         return v.value;
+    }
+
+    gcc_jit_rvalue* castValue(const TypedValue& v, const Type& target) {
+        bool fromAddress = v.type.kind == TypeKind::Ptr || v.type.kind == TypeKind::String;
+        bool toAddress = target.kind == TypeKind::Ptr || target.kind == TypeKind::String;
+        if (fromAddress && toAddress) return v.value;
+        if (fromAddress) return coerceValue({bitcast(v.value, i64Ty), Type{TypeKind::I64}}, target);
+        if (toAddress) return bitcast(toI64(v), ptrTy);
+        return coerceValue(v, target);
     }
 
     gcc_jit_rvalue* toCond(const TypedValue& v) {
@@ -1002,6 +1013,11 @@ struct GccBackend::Impl {
             Type pointee = v.type.pointee ? *v.type.pointee : Type{TypeKind::I64};
             auto* typed = bitcast(v.value, gcc_jit_type_get_pointer(gccType(pointee)));
             return TypedValue{gcc_jit_lvalue_as_rvalue(gcc_jit_rvalue_dereference(typed, loc)), pointee};
+        }
+        if (auto* n = std::get_if<ast::CastExpr>(&expr.node)) {
+            auto v = genExpr(*n->operand);
+            Type target = checker.resolveTypeString(n->targetType);
+            return TypedValue{castValue(v, target), target};
         }
         if (std::get_if<ast::EvalExpr>(&expr.node)) {
             std::fprintf(stderr, "error: 'eval' is not supported by the gcc backend "

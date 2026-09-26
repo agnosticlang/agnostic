@@ -1096,6 +1096,29 @@ void NVMCodeGen::generateExpression(ast::Expression& expr) {
         emitByte(LOAD_ABS);
         return;
     }
+    if (auto* n = std::get_if<ast::CastExpr>(&expr.node)) {
+        auto target = checker_.resolveTypeString(n->targetType);
+        if (target.kind == TypeKind::F64) {
+            std::fprintf(stderr, "error: floating-point values are not supported by the nvm backend\n");
+            std::exit(1);
+        }
+        if (target.kind == TypeKind::Ptr) {
+            std::fprintf(stderr, "error: pointer casts are not supported by the nvm backend (in %s)\n",
+                         currentFunction_.c_str());
+            std::exit(1);
+        }
+        generateExpression(*n->operand);
+        if (target.kind == TypeKind::U8) {
+            emitPush(0xFF);
+            emitByte(AND);
+        } else if (target.kind == TypeKind::I8) {
+            emitPush(24);
+            emitByte(SHL);
+            emitPush(24);
+            emitByte(SAR);
+        }
+        return;
+    }
     if (std::get_if<ast::AddressOfExpr>(&expr.node)) {
         std::fprintf(stderr, "error: '&' has no valid address to take in the nvm backend (in %s)\n",
                      currentFunction_.c_str());

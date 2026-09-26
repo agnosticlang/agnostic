@@ -55,6 +55,27 @@ bool Type::canAssignTo(const Type& other) const {
     return false;
 }
 
+bool Type::canCastTo(const Type& other) const {
+    if (canAssignTo(other)) return true;
+    if (isNumeric() && other.isNumeric()) return true;
+    if (kind == TypeKind::Bool && other.isInteger()) return true;
+    bool fromAddress = kind == TypeKind::Ptr || kind == TypeKind::String;
+    bool toAddress = other.kind == TypeKind::Ptr || other.kind == TypeKind::String;
+    if (fromAddress && toAddress) return true;
+    bool fromWord = kind == TypeKind::I64 || kind == TypeKind::U64;
+    bool toWord = other.kind == TypeKind::I64 || other.kind == TypeKind::U64;
+    return (kind == TypeKind::Ptr && toWord) || (fromWord && other.kind == TypeKind::Ptr);
+}
+
+static std::string invalidCastHint(const Type& from, const Type& to) {
+    if (from.isNumeric() && to.kind == TypeKind::Bool) return " (compare instead, e.g. 'x != 0')";
+    if (from.kind == TypeKind::Bool && to.isFloat()) return " (cast to an integer type first)";
+    if ((from.kind == TypeKind::Ptr && to.isInteger()) || (from.isInteger() && to.kind == TypeKind::Ptr)) {
+        return " (pointers convert only to and from i64 or u64)";
+    }
+    return "";
+}
+
 std::string Type::toString() const {
     switch (kind) {
         case TypeKind::I64: return "i64";
@@ -204,6 +225,13 @@ std::vector<std::string> TypeChecker::structNames() const {
     std::vector<std::string> names;
     names.reserve(structs_.size());
     for (auto& [name, fields] : structs_) names.push_back(name);
+    return names;
+}
+
+std::vector<std::string> TypeChecker::typeNames() const {
+    std::vector<std::string> names = {"i64", "i32", "i8", "u64", "u32", "u8", "f64", "bool", "string", "int", "float"};
+    auto structs = structNames();
+    names.insert(names.end(), structs.begin(), structs.end());
     return names;
 }
 
@@ -674,6 +702,19 @@ Type TypeChecker::checkExpression(ast::Expression& expr) {
         if (operand.kind == TypeKind::Ptr) return *operand.pointee;
         addError("cannot dereference non-pointer type " + operand.toString());
         return Type{TypeKind::Unknown};
+    }
+
+    if (auto* n = std::get_if<ast::CastExpr>(&expr.node)) {
+        Type from = checkExpression(*n->operand);
+        Type to = resolveType(n->targetType);
+        if (to.kind == TypeKind::Unknown) {
+            addError("unknown type '" + n->targetType + "' in cast" + didYouMean(n->targetType, typeNames()));
+            return to;
+        }
+        if (!from.canCastTo(to)) {
+            addError("cannot cast " + from.toString() + " to " + to.toString() + invalidCastHint(from, to));
+        }
+        return to;
     }
 
     if (auto* n = std::get_if<ast::EvalExpr>(&expr.node)) {

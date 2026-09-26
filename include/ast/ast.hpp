@@ -97,6 +97,12 @@ struct StringIndexExpr {
 
 struct AddressOfExpr { std::unique_ptr<Expression> operand; };
 struct DerefExpr { std::unique_ptr<Expression> operand; };
+
+struct CastExpr {
+    std::unique_ptr<Expression> operand;
+    std::string targetType;
+};
+
 struct EvalExpr { std::unique_ptr<Expression> instruction; };
 
 struct FieldAccessExpr {
@@ -121,7 +127,7 @@ struct Expression {
         NumberExpr, FloatExpr, BoolExpr, StringExpr, TemplateStringExpr, IdentifierExpr,
         BinaryExpr, UnaryExpr, CallExpr, MethodCallExpr, ArrayAccessExpr,
         StringIndexExpr, AddressOfExpr, DerefExpr, EvalExpr, FieldAccessExpr,
-        FunctionLiteralExpr, StructLiteralExpr> node;
+        FunctionLiteralExpr, StructLiteralExpr, CastExpr> node;
 };
 
 struct VarDeclStmt {

@@ -730,7 +730,7 @@ ast::Expression Parser::parseAdditive() {
 }
 
 ast::Expression Parser::parseMultiplicative() {
-    ast::Expression left = parseUnary();
+    ast::Expression left = parseCast();
     for (;;) {
         ast::BinaryOp op;
         if (current().kind == TokenKind::Star) op = ast::BinaryOp::Mul;
@@ -738,10 +738,28 @@ ast::Expression Parser::parseMultiplicative() {
         else if (current().kind == TokenKind::Percent) op = ast::BinaryOp::Mod;
         else break;
         advance();
-        ast::Expression right = parseUnary();
+        ast::Expression right = parseCast();
         left = ast::Expression{ast::BinaryExpr{op, box(std::move(left)), box(std::move(right))}};
     }
     return left;
+}
+
+ast::Expression Parser::parseCast() {
+    ast::Expression expr = parseUnary();
+    while (current().kind == TokenKind::As) {
+        advance();
+        std::string targetType;
+        if (current().kind == TokenKind::Identifier) {
+            targetType = current().text;
+            advance();
+        } else {
+            auto t = tryParseType();
+            if (!t) error("expected type after 'as'");
+            targetType = *t;
+        }
+        expr = ast::Expression{ast::CastExpr{box(std::move(expr)), std::move(targetType)}};
+    }
+    return expr;
 }
 
 ast::Expression Parser::parseUnary() {

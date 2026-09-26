@@ -92,6 +92,7 @@ const char* tokenKindName(TokenKind kind) {
         case TokenKind::Comptime: return "comptime";
         case TokenKind::Break: return "break";
         case TokenKind::Continue: return "continue";
+        case TokenKind::As: return "as";
         case TokenKind::Identifier: return "identifier";
         case TokenKind::Number: return "number";
         case TokenKind::Float: return "float";
