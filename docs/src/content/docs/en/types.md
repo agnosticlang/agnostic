@@ -22,9 +22,6 @@ description: The Agnostic type system.
 A literal with a `.` (`3.14`) is `f64`; a literal without one (`3`) is `i64`. Mixing `f64` and an
 integer in arithmetic (`3.14 + 2`) implicitly converts the integer operand to `f64` and the
 expression's type is `f64`; `%` and the bitwise/shift operators do not accept `f64` operands.
-`f64` is only supported under `--backend=llvm` and `--backend=gcc` — `--backend=nvm` rejects any
-use of `f64` at compile time, since its bytecode stack machine is 32-bit-integer-only throughout
-and there is no in-repo interpreter to verify a float encoding against.
 
 There is no `char` type; a byte read from a string index or `stdio.ReadChar` is an `int`.
 
@@ -55,8 +52,6 @@ func main() {
 var buf [64]u8
 var n Option<int> = os.ReadFd(fd, &buf, 64)
 ```
-
-Pointers are supported under `--backend=llvm` and `--backend=gcc`. `--backend=nvm` rejects `&` at compile time: ordinary local variables in the Novaria Virtual Machine's bytecode are frame-relative stack slots, not addressable memory.
 
 ## Arrays
 
@@ -102,7 +97,7 @@ var addr u64 = &big as u64
 
 Any other cast is a compile error. There is no cast from a number to `bool`; compare instead (`x != 0`).
 
-`as` binds tighter than the binary operators and looser than the unary ones: `-x as u8` is `(-x) as u8`, and `a + b as i64` is `a + (b as i64)`. Under `--backend=nvm`, casts to `f64` and to pointer types are compile errors.
+`as` binds tighter than the binary operators and looser than the unary ones: `-x as u8` is `(-x) as u8`, and `a + b as i64` is `a + (b as i64)`.
 
 ## Type checking rules
 

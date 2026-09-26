@@ -69,8 +69,6 @@ platform.write = linuxWrite
 stdio.Println(platform.write(1, 0, 4))
 ```
 
-This only works under `--backend=llvm`, for the same reason plain closures do not work under `--backend=nvm`: see [Functions and Closures](/en/functions/).
-
 ## Field access and assignment
 
 ```agn

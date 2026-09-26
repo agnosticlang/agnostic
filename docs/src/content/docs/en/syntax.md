@@ -83,7 +83,7 @@ point.x = 6
 
 ## Operators
 
-Arithmetic: `+`, `-`, `*`, `/`, `%`. Comparison: `==`, `!=`, `<`, `<=`, `>`, `>=`. Logical: `&&`, `||`, `!`. Bitwise: `&`, `|`, `^`, `<<`, `>>`. Cast: `as` (see [Casts](/en/types/#casts)). String concatenation: `++` (works under `--backend=llvm`; `--backend=nvm` rejects it at compile time, use `string.concat` instead, see [Standard Library](/en/standard-library/)).
+Arithmetic: `+`, `-`, `*`, `/`, `%`. Comparison: `==`, `!=`, `<`, `<=`, `>`, `>=`. Logical: `&&`, `||`, `!`. Bitwise: `&`, `|`, `^`, `<<`, `>>`. Cast: `as` (see [Casts](/en/types/#casts)). String concatenation: `++`.
 
 ```agn
 var greeting string = "foo" ++ "bar"
@@ -123,4 +123,4 @@ An interpolated expression can carry a format spec after a colon: an optional le
 stdio.PrintlnStr("value=$(n:05d)")   // value=00042
 ```
 
-Template strings are evaluated at runtime and are only available under `--backend=llvm`; `--backend=nvm` rejects them at compile time.
+Template strings are evaluated at runtime.

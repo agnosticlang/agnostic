@@ -1,9 +1,9 @@
 ---
 title: Standard Library
-description: result, stdio, math, string, os, and novaria.
+description: result, stdio, math, string, and os.
 ---
 
-Every function in these modules is a compiler intrinsic: the body written in the `.agn` source exists only so the file type-checks and so a human reading it can see the signature. The actual behavior is generated directly by the compiler backend, not by running that body. `ReadInt`, `ReadChar`, `ReadLine`, template string interpolation, and `++` are the exceptions called out below where the source body's stated behavior does not hold under `--backend=nvm`.
+Every function in these modules is a compiler intrinsic: the body written in the `.agn` source exists only so the file type-checks and so a human reading it can see the signature. The actual behavior is generated directly by the compiler backend, not by running that body.
 
 ## result
 
@@ -26,8 +26,6 @@ Every function in these modules is a compiler intrinsic: the body written in the
 | `Flush` | `()` | no-op; output is unbuffered |
 
 `Print` and `Println` only accept `int`; passing a `string` or a `bool` is a type error, use `PrintStr`/`PrintlnStr` or `PrintBool`/`PrintlnBool`.
-
-`ReadInt`, `ReadChar`, and `ReadLine` are compile errors under `--backend=nvm`. The Novaria kernel's stdin file descriptor has no working read handler (`/dev/stdin` has a null read function, `/dev/tty` returns immediately without filling the buffer), so there is no correct behavior to generate; the compiler refuses to compile the call instead of producing a program that hangs or reads garbage.
 
 ## math
 
@@ -67,11 +65,11 @@ All functions take `int`; most return `int`, except `IsEven`/`IsOdd`/`IsPrime`, 
 | `toUpper` | `(s string) string` | ASCII only |
 | `toLower` | `(s string) string` | ASCII only |
 
-`++` and `$(...)` template string interpolation (see [Syntax](/en/syntax/)) cover the same ground as `concat` for simple cases; `string.concat` is the only string-building option available under `--backend=nvm`, where `++` and template strings are compile errors. `indexOf`, `contains`, `startsWith`, `endsWith`, `charAt`, `substr`, `toUpper`, and `toLower` are compile errors under `--backend=nvm`.
+`++` and `$(...)` template string interpolation (see [Syntax](/en/syntax/)) cover the same ground as `concat` for simple cases.
 
 ## os
 
-File descriptors and command-line arguments. Compile errors under `--backend=nvm`; use `novaria` there instead.
+File descriptors and command-line arguments.
 
 | Function | Signature | Notes |
 |---|---|---|
@@ -87,17 +85,3 @@ File descriptors and command-line arguments. Compile errors under `--backend=nvm
 For a `[N]u8` array `buf`, pass `&buf` as the `buffer` of `ReadFd` and `stdio.ReadLine`. See [Pointers](/en/types/#pointers).
 
 `OpenRead`, `OpenCreate`, `ReadFd`, and `WriteFd` return `Option<int>` (see [Generic structs](/en/structs/#generic-structs)) instead of a raw sentinel: `some` is `true` on success and `false` on failure, and `value` holds the file descriptor or byte count only when `some` is `true` — check `some` before trusting `value`.
-
-## novaria
-
-| Function | Signature | Notes |
-|---|---|---|
-| `Exit` | `(code int)` | |
-| `Open` | `(filename string) int` | read-only; there is no syscall to create or write a file |
-| `Read` | `(fd int, bufferOffset int) int` | |
-| `Write` | `(fd int, bufferOffset int) int` | |
-| `Remove` | `(filename string)` | |
-| `Exec` | `(filename string)` | opens then spawns; the kernel does not report the child's PID back |
-| `MemAlloc` | `(size int) int` | returns a heap offset |
-
-This module wraps syscalls specific to the Novaria kernel. Its intrinsic behavior is only generated under `--backend=nvm`; under `--backend=llvm` these functions compile to their literal, non-functional source body (`Open` always returns `-1` and so on), because there is no Novaria kernel underneath a native `llvm`-backend executable.

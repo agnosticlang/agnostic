@@ -23,7 +23,7 @@ cmake --build build -j$(nproc)
 ```
 
 Requires LLVM (found via `find_package(LLVM CONFIG REQUIRED)`). The
-resulting `agnostic` binary supports `--backend=llvm|nvm|gcc`,
+resulting `agnostic` binary supports `--backend=llvm|gcc`,
 `--mem=arc|manual|orc`, and `--target-os=`.
 
 ### Examples

@@ -7,7 +7,7 @@ description: CLI flags, backends, memory modes, and packaging.
 
 ```
 agnostic <source.agn> [options]
-  --backend=llvm|nvm|gcc   select codegen backend (default: llvm)
+  --backend=llvm|gcc       select codegen backend (default: llvm)
   --mem=arc|manual|orc     select memory management mode (default: arc)
   --target-os=linux|freebsd|windows|hurd  (default: linux, only linux implemented)
   --output=<path>          output executable path
@@ -15,7 +15,7 @@ agnostic <source.agn> [options]
   --help                   print usage and exit
 ```
 
-`--llvm`, `--nvm`, and `--gcc` are accepted as shorthand for the matching `--backend=` value.
+`--llvm` and `--gcc` are accepted as shorthand for the matching `--backend=` value.
 
 ## Backends
 
@@ -23,17 +23,11 @@ agnostic <source.agn> [options]
 
 Generates native machine code through the LLVM C++ API (`IRBuilder`, `Module`, `TargetMachine`), then links it into a static executable with `cc -nostdlib -static -no-pie -e _start`. The result does not link libc; the standard library and runtime call the Linux kernel through raw syscalls (`src/platform/linux`).
 
-### nvm
-
-Generates bytecode for the Novaria Virtual Machine and writes it to `<output>.bin`. Running it needs a Novaria kernel or a separate bytecode interpreter; this repository does not ship one. Not supported under this backend: closures and function values, `&` address-of, template string interpolation, the `++` string operator, the `f64` type, and `stdio.ReadInt`/`ReadChar`/`ReadLine` (the Novaria kernel's stdin has no working read path). Each of these is a compile-time error naming the specific construct, not a silent miscompile.
-
 ### gcc
 
 Generates native machine code through libgccjit, GCC's embeddable code generation library, and links it the same way the `llvm` backend does. It has the same feature set as `llvm` (closures, structs, pointers, `comptime`, all three `--mem=` modes) and shares the same runtime static libraries and libc-free linking. Building the compiler with this backend needs `libgccjit.h` and `libgccjit.so` on the system (Arch Linux: package `libgccjit`; Fedora: `libgccjit-devel`; Debian/Ubuntu: `libgccjit-dev`).
 
 ## Memory modes
-
-`--mem=` only affects the `llvm` backend; `nvm` bytecode has no heap allocation runtime to select a strategy for.
 
 - **arc** (default): reference counting. `agn_rt_retain`/`agn_rt_release` run around bindings that alias an existing value; a fresh construction (a literal, a call result, a struct literal) is not retained again because it already owns its one reference.
 - **manual**: `agn_rt_alloc` only. Nothing is freed automatically.

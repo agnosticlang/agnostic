@@ -69,8 +69,6 @@ platform.write = linuxWrite
 stdio.Println(platform.write(1, 0, 4))
 ```
 
-Это работает только под `--backend=llvm`, по той же причине, по которой под `--backend=nvm` не работают обычные замыкания: см. [Функции и замыкания](/ru/functions/).
-
 ## Доступ к полям и присваивание
 
 ```agn

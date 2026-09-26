@@ -3,7 +3,6 @@
 #include "ast/ast.hpp"
 #include "backend/gcc/backend.hpp"
 #include "backend/llvm/codegen.hpp"
-#include "backend/nvm/codegen.hpp"
 #include "lexer/lexer.hpp"
 #include "parser/monomorphize.hpp"
 #include "parser/parser.hpp"
@@ -98,7 +97,7 @@ void loadModules(agn::ast::Program& program, const fs::path& sourceDir, const fs
 
 void printUsage(const char* argv0) {
     std::cerr << "Usage: " << argv0 << " <source.agn> [options]\n"
-              << "  --backend=llvm|nvm|gcc   select codegen backend (default: llvm)\n"
+              << "  --backend=llvm|gcc       select codegen backend (default: llvm)\n"
               << "  --mem=arc|manual|orc     select memory management mode (default: arc; orc allocations don't survive their function)\n"
               << "  --target-os=linux|freebsd|windows|hurd  (default: linux, only linux/freebsd implemented)\n"
               << "  --output=<path>          output executable path\n"
@@ -139,7 +138,6 @@ int main(int argc, char** argv) {
         else if (arg.rfind("--target-os=", 0) == 0) targetOs = arg.substr(12);
         else if (arg.rfind("--output=", 0) == 0) output = arg.substr(9);
         else if (arg == "--llvm") backend = "llvm";
-        else if (arg == "--nvm") backend = "nvm";
         else if (arg == "--gcc") backend = "gcc";
         else if (arg == "-c" || arg == "--compile-only") compileOnly = true;
         else if (sourceFile.empty()) sourceFile = arg;
@@ -191,16 +189,6 @@ int main(int argc, char** argv) {
     auto dot = stem.rfind(".agn");
     if (dot != std::string::npos && dot == stem.size() - 4) stem = stem.substr(0, dot);
     std::string finalOutput = output.empty() ? stem : output;
-
-    if (backend == "nvm") {
-        agn::backend::nvm::NVMCodeGen nvmCodegen(checker);
-        auto bytecode = nvmCodegen.generate(program);
-        std::ofstream out(finalOutput + ".bin", std::ios::binary);
-        out.write(reinterpret_cast<const char*>(bytecode.data()), std::streamsize(bytecode.size()));
-        out.close();
-        std::cout << "Compilation successful: " << finalOutput << ".bin\n";
-        return 0;
-    }
 
     if (backend != "llvm" && backend != "gcc") {
         std::cerr << "error: unknown --backend= value '" << backend << "'\n";

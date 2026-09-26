@@ -56,7 +56,3 @@ func apply(f func(i64) -> i64, x i64) i64 {
 
 apply(double, 21)
 ```
-
-## Backend support
-
-Function values and closures only work under `--backend=llvm`. `--backend=nvm` rejects any function literal or bare function-name-as-value at compile time: the Novaria Virtual Machine's `CALL` instruction only takes a compile-time bytecode address, there is no indirect call instruction to call through a runtime function pointer.

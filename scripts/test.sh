@@ -2,8 +2,8 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # SPDX-FileCopyrightText: 2026 AnmiTaliDev <anmitalidev@nuros.org>
 #
-# Regression suite for the compiler: compiles every example through the llvm,
-# gcc, and nvm backends and checks the result against known-good behavior.
+# Regression suite for the compiler: compiles every example through the llvm
+# and gcc backends and checks the result against known-good behavior.
 set -eu
 
 BUILD_DIR="${1:-build}"
@@ -39,31 +39,6 @@ expect_run() {
 
 expect_llvm_run() { expect_run llvm "$1" "$2" "$3"; }
 expect_gcc_run() { expect_run gcc "$1" "$2" "$3"; }
-
-expect_nvm_compile() {
-    name=$1
-    path=$2
-    should_succeed=$3
-    out="$WORK_DIR/${name}_nvm"
-
-    if "$AGNOSTIC" "$path" --backend=nvm --output="$out" >/dev/null 2>&1; then
-        rc=0
-    else
-        rc=1
-    fi
-
-    if [ "$should_succeed" = "yes" ] && [ "$rc" -ne 0 ]; then
-        echo "FAIL: $name (nvm) expected to compile, but errored"
-        fail=1
-        return
-    fi
-    if [ "$should_succeed" = "no" ] && [ "$rc" -eq 0 ]; then
-        echo "FAIL: $name (nvm) expected to be rejected, but compiled"
-        fail=1
-        return
-    fi
-    echo "PASS: $name (nvm)"
-}
 
 expect_freebsd_compile() {
     name=$1
@@ -139,24 +114,6 @@ expect_gcc_run comptime_generics "examples/comptime_generics.agn" "$(printf '7\n
 expect_gcc_run comptime_generic_values "examples/comptime_generic_values.agn" "$(printf '15\n15\n42\n21')"
 expect_gcc_run casts "examples/casts.agn" "$(printf '44\n255\n-56\n3\n1\n42\nhi')"
 
-expect_nvm_compile closures "examples/closures.agn" no            # function values/closures unsupported
-expect_nvm_compile structs "examples/structs.agn" yes
-expect_nvm_compile comptime_platform "examples/comptime_platform.agn" no   # function-valued struct field unsupported
-expect_nvm_compile inlineasm "examples/inlineasm.agn" yes
-expect_nvm_compile hello "examples/hello.agn" yes
-expect_nvm_compile fizzbuzz "examples/fizzbuzz.agn" yes
-expect_nvm_compile primes "examples/primes.agn" yes
-expect_nvm_compile bubble_sort "examples/bubble_sort.agn" yes
-expect_nvm_compile strings_demo "examples/strings_demo.agn" yes
-expect_nvm_compile fibonacci "examples/fibonacci.agn" yes
-expect_nvm_compile strings_runtime "scripts/testdata/strings_runtime_test.agn" no   # ++ concat unsupported
-expect_nvm_compile generics "examples/generics.agn" yes
-expect_nvm_compile floats "examples/floats.agn" no   # float type unsupported
-expect_nvm_compile comptime_eval "examples/comptime_eval.agn" yes
-expect_nvm_compile comptime_generics "examples/comptime_generics.agn" yes
-expect_nvm_compile comptime_generic_values "examples/comptime_generic_values.agn" yes
-expect_nvm_compile casts "examples/casts.agn" no
-
 expect_llvm_run math_stdlib "scripts/testdata/math_test.agn" \
     "$(printf '7\n3\n1024\n9\n6\n12\n120\ntrue\nfalse\n10\n55\ntrue\nfalse\n55')"
 expect_llvm_run strings_runtime "scripts/testdata/strings_runtime_test.agn" \
@@ -175,10 +132,6 @@ expect_llvm_run os_string "scripts/testdata/os_string_test.agn" \
     "$(printf 'HELLO\nworld\ntrue\n6\nfalse\ntrue\nfalse\ntrue\nfalse\ntrue\nfalse\ntrue\n101\nworld\nargcount_ok\ntrue\n9')"
 expect_gcc_run os_string "scripts/testdata/os_string_test.agn" \
     "$(printf 'HELLO\nworld\ntrue\n6\nfalse\ntrue\nfalse\ntrue\nfalse\ntrue\nfalse\ntrue\n101\nworld\nargcount_ok\ntrue\n9')"
-
-expect_nvm_compile math_stdlib "scripts/testdata/math_test.agn" yes
-expect_nvm_compile string_stdlib "scripts/testdata/string_test.agn" yes
-expect_nvm_compile os_string "scripts/testdata/os_string_test.agn" no
 
 expect_freebsd_compile closures "examples/closures.agn"
 expect_freebsd_compile structs "examples/structs.agn"
