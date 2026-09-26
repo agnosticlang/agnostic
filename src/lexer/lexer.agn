@@ -1,6 +1,5 @@
 package main
 
-import "os"
 import "string"
 
 struct TokenInfo {
@@ -26,23 +25,6 @@ func isAlpha(c int) bool {
 
 func isAlnum(c int) bool {
     return isDigit(c) || isAlpha(c)
-}
-
-pub fn LexLoadSource(path string) string {
-    var buf [131072]i8
-    var fd Option<int> = os.OpenRead(path)
-    if !fd.some {
-        return ""
-    }
-    var n Option<int> = os.ReadFd(fd.value, &buf, 131071)
-    os.Close(fd.value)
-    if !n.some {
-        return ""
-    }
-    buf[n.value] = 0
-    var stackSource string = &buf
-    // force a heap copy: `stackSource` points at a local array that dies when we return
-    return string.concat(stackSource, "")
 }
 
 pub fn LexSkip(source string, pos0 int) int {
