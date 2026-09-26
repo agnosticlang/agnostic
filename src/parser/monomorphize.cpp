@@ -215,8 +215,6 @@ ast::Statement cloneStmt(const ast::Statement& s) {
                 ast::ExpressionStmt copy;
                 copy.expr = cloneExpr(node.expr);
                 out.node = std::move(copy);
-            } else if constexpr (std::is_same_v<T, ast::InlineAsmStmt>) {
-                out.node = node;
             } else if constexpr (std::is_same_v<T, ast::ComptimeStmt>) {
                 ast::ComptimeStmt copy;
                 copy.body = cloneStmts(node.body);

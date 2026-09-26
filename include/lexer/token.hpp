@@ -8,7 +8,7 @@
 namespace agn::lexer {
 
 enum class TokenKind {
-    Package, Import, Func, Var, If, Else, For, Return, Asm, Struct, Comptime,
+    Package, Import, Func, Var, If, Else, For, Return, Struct, Comptime,
     Break, Continue, As,
 
     Identifier, Number, Float, String, BoolLiteral,

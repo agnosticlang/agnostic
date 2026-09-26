@@ -349,7 +349,6 @@ ast::Statement Parser::parseStatementBody() {
         case TokenKind::If: return parseIf();
         case TokenKind::For: return parseFor();
         case TokenKind::Return: return parseReturn();
-        case TokenKind::Asm: return parseAsm();
         case TokenKind::Comptime: return parseComptime();
         case TokenKind::Break: advance(); return ast::Statement{ast::BreakStmt{}};
         case TokenKind::Continue: advance(); return ast::Statement{ast::ContinueStmt{}};
@@ -506,125 +505,6 @@ ast::Statement Parser::parseComptime() {
     expect(TokenKind::LeftBrace);
     auto body = parseBlock();
     return ast::Statement{ast::ComptimeStmt{std::move(body)}};
-}
-
-ast::Statement Parser::parseAsm() {
-    expect(TokenKind::Asm);
-
-    if (current().kind == TokenKind::String) {
-        std::string code = current().text;
-        advance();
-        return ast::Statement{ast::InlineAsmStmt{parseAsmInterpolation(code)}};
-    }
-
-    if (current().kind != TokenKind::LeftBrace) {
-        error("expected assembly code string or block after 'asm'");
-    }
-    advance();
-    skipNewlines();
-
-    std::vector<ast::AsmPart> parts;
-    std::string currentLine;
-
-    while (current().kind != TokenKind::RightBrace) {
-        switch (current().kind) {
-            case TokenKind::Dollar: {
-                std::string lineBeforeVar = trim(currentLine);
-                currentLine.clear();
-                advance();
-                if (current().kind == TokenKind::LeftParen) {
-                    advance();
-                    if (current().kind == TokenKind::Identifier) {
-                        std::string varName = current().text;
-                        if (!lineBeforeVar.empty() && lineBeforeVar != "push") {
-                            parts.push_back(ast::AsmPart{ast::AsmPart::Kind::Literal, lineBeforeVar});
-                        }
-                        parts.push_back(ast::AsmPart{ast::AsmPart::Kind::Variable, varName});
-                        advance();
-                        expect(TokenKind::RightParen);
-                    }
-                }
-                break;
-            }
-            case TokenKind::Identifier: {
-                if (!currentLine.empty()) currentLine += ' ';
-                currentLine += current().text;
-                advance();
-                break;
-            }
-            case TokenKind::Number: {
-                if (!currentLine.empty()) currentLine += ' ';
-                int64_t nVal = current().number;
-                std::string numStr;
-                bool consumedHex = false;
-                if (nVal == 0 && peek(1).kind == TokenKind::Identifier) {
-                    const std::string& id = peek(1).text;
-                    if (!id.empty() && (id[0] == 'x' || id[0] == 'X')) {
-                        numStr = "0" + id;
-                        advance();
-                        advance();
-                        consumedHex = true;
-                    }
-                }
-                if (!consumedHex) {
-                    numStr = std::to_string(nVal);
-                    advance();
-                }
-                currentLine += numStr;
-                break;
-            }
-            case TokenKind::Semicolon: {
-                while (current().kind != TokenKind::Newline && current().kind != TokenKind::RightBrace &&
-                       current().kind != TokenKind::Eof) {
-                    advance();
-                }
-                break;
-            }
-            case TokenKind::Newline: {
-                if (!currentLine.empty()) {
-                    parts.push_back(ast::AsmPart{ast::AsmPart::Kind::Literal, currentLine});
-                    currentLine.clear();
-                }
-                parts.push_back(ast::AsmPart{ast::AsmPart::Kind::Literal, "\n"});
-                advance();
-                break;
-            }
-            default:
-                advance();
-                break;
-        }
-    }
-
-    if (!currentLine.empty()) {
-        parts.push_back(ast::AsmPart{ast::AsmPart::Kind::Literal, currentLine});
-    }
-    expect(TokenKind::RightBrace);
-    return ast::Statement{ast::InlineAsmStmt{parts}};
-}
-
-std::vector<ast::AsmPart> Parser::parseAsmInterpolation(const std::string& code) {
-    std::vector<ast::AsmPart> parts;
-    std::string literal;
-    for (size_t i = 0; i < code.size(); i++) {
-        if (code[i] == '$' && i + 1 < code.size() && code[i + 1] == '(') {
-            i++;
-            if (!literal.empty()) {
-                parts.push_back(ast::AsmPart{ast::AsmPart::Kind::Literal, literal});
-                literal.clear();
-            }
-            std::string varName;
-            i++;
-            while (i < code.size() && code[i] != ')') {
-                varName.push_back(code[i]);
-                i++;
-            }
-            parts.push_back(ast::AsmPart{ast::AsmPart::Kind::Variable, trim(varName)});
-        } else {
-            literal.push_back(code[i]);
-        }
-    }
-    if (!literal.empty()) parts.push_back(ast::AsmPart{ast::AsmPart::Kind::Literal, literal});
-    return parts;
 }
 
 ast::Expression Parser::parseExpression() { return parseOr(); }

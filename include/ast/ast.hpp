@@ -30,11 +30,6 @@ struct FormatSpec {
     char padding = ' ';
 };
 
-struct AsmPart {
-    enum class Kind { Literal, Variable } kind;
-    std::string text;
-};
-
 struct Parameter {
     std::string name;
     std::string type;
@@ -171,7 +166,6 @@ struct ForStmt {
 
 struct ReturnStmt { std::optional<Expression> value; };
 struct ExpressionStmt { Expression expr; };
-struct InlineAsmStmt { std::vector<AsmPart> parts; };
 
 struct ComptimeStmt { std::vector<Statement> body; };
 
@@ -182,7 +176,7 @@ struct Statement {
     std::variant<
         VarDeclStmt, ArrayDeclStmt, AssignmentStmt, ArrayAssignmentStmt,
         PointerAssignmentStmt, FieldAssignmentStmt, IfStmt, ForStmt,
-        ReturnStmt, ExpressionStmt, InlineAsmStmt, ComptimeStmt,
+        ReturnStmt, ExpressionStmt, ComptimeStmt,
         BreakStmt, ContinueStmt> node;
     size_t line = 0;
     size_t column = 0;

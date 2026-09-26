@@ -478,7 +478,6 @@ void TypeChecker::checkStatement(ast::Statement& stmt) {
         checkExpression(n->expr);
         return;
     }
-    if (std::get_if<ast::InlineAsmStmt>(&stmt.node)) return;
     if (auto* n = std::get_if<ast::ComptimeStmt>(&stmt.node)) {
         checkComptimeBody(n->body);
         return;

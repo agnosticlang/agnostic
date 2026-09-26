@@ -87,7 +87,6 @@ const char* tokenKindName(TokenKind kind) {
         case TokenKind::Else: return "else";
         case TokenKind::For: return "for";
         case TokenKind::Return: return "return";
-        case TokenKind::Asm: return "asm";
         case TokenKind::Struct: return "struct";
         case TokenKind::Comptime: return "comptime";
         case TokenKind::Break: return "break";

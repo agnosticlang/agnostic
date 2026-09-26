@@ -1309,7 +1309,6 @@ struct Codegen::Impl {
             genExpr(n->expr);
             return;
         }
-        if (std::get_if<ast::InlineAsmStmt>(&stmt.node)) return;
         if (auto* n = std::get_if<ast::ComptimeStmt>(&stmt.node)) {
             for (auto& s : n->body) genStatement(s);
             return;

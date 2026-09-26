@@ -39,10 +39,8 @@ private:
     ast::Statement parseIf();
     ast::Statement parseFor();
     ast::Statement parseReturn();
-    ast::Statement parseAsm();
     ast::Statement parseComptime();
     std::vector<ast::Statement> parseBlock();
-    std::vector<ast::AsmPart> parseAsmInterpolation(const std::string& code);
 
     ast::Expression parseExpression();
     ast::Expression parseOr();

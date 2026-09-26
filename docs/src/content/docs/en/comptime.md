@@ -44,8 +44,8 @@ every other variable in Agnostic, `comptime` bindings are function-scoped, not b
 later reference to that name is replaced with the literal value before codegen sees it. No backend needs
 to know a value was ever comptime-computed; it only ever sees a plain literal.
 
-A statement the evaluator cannot handle (a call into a function with a receiver, a struct literal, inline
-asm, anything referencing runtime-only state) is left exactly as it appears and typechecked normally as
+A statement the evaluator cannot handle (a call into a function with a receiver, a struct literal,
+anything referencing runtime-only state) is left exactly as it appears and typechecked normally as
 ordinary runtime code — there is no error for this, it is the intended fallback that keeps constructs like
 the platform-dispatch pattern below working.
 
