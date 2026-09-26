@@ -61,6 +61,8 @@ cmake --build build -j$(nproc)
 
 Requires LLVM development files on the CMake search path and a C++20 compiler. See [Getting Started](/en/getting-started/). The `windows` target also needs `clang`, `llvm-lib`, and `llvm-dlltool` at build time; if one of them is missing, CMake disables the target and says so.
 
+The build bootstraps itself. It first links `agnostic_stage0`, a compiler that uses the C++ lexer in `old/lexer`, compiles the self-hosted lexer `src/lexer/lexer.agn` with it, and then links the final `agnostic` with that lexer. `-DAGNOSTIC_BOOTSTRAP_COMPILER=<path>` compiles `lexer.agn` with an existing compiler instead of building stage 0. `-DAGNOSTIC_BOOTSTRAP=ON` builds only the compiler with the C++ lexer, as `agnostic`.
+
 ## Installing from a package
 
 CI builds `.deb`, `.rpm`, an Arch package, and an Alpine `.apk` on every tag push, and attaches them to the GitHub release. All four install the same layout: the `agnostic` binary under `bin/`, the runtime static libraries under `lib/agnostic/`, and the standard library `.agn` files under `share/agnostic/stdlib/`. The compiler looks for its standard library and runtime libraries relative to its own path first, then falls back to the layout used when running straight out of the build directory, so an installed package and a locally built binary both work without extra configuration.
