@@ -17,7 +17,7 @@ public:
     Codegen(agn::parser::TypeChecker& checker, MemMode mode, const std::string& moduleName);
     ~Codegen();
 
-    void generate(agn::ast::Program& program);
+    bool generate(agn::ast::Program& program, std::string& errorOut);
     bool emitObjectFile(const std::string& path, std::string& errorOut);
     void dumpIR() const;
 

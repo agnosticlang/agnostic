@@ -82,20 +82,21 @@ expect_reject() {
     name=$1
     path=$2
     expected_error=$3
-    out="$WORK_DIR/${name}_reject"
+    backend=${4:-llvm}
+    out="$WORK_DIR/${name}_${backend}_reject"
 
-    if "$AGNOSTIC" "$path" --backend=llvm --output="$out" >"$out.log" 2>&1; then
-        echo "FAIL: $name expected a compile error, but compiled"
+    if "$AGNOSTIC" "$path" --backend="$backend" --output="$out" >"$out.log" 2>&1; then
+        echo "FAIL: $name ($backend) expected a compile error, but compiled"
         fail=1
         return
     fi
     if ! grep -qF "$expected_error" "$out.log"; then
-        echo "FAIL: $name error message mismatch"
+        echo "FAIL: $name ($backend) error message mismatch"
         echo "  expected: $expected_error"
         fail=1
         return
     fi
-    echo "PASS: $name (reject)"
+    echo "PASS: $name ($backend, reject)"
 }
 
 expect_llvm_run closures "examples/closures.agn" "$(printf '1\n2\n3\n42')"
@@ -215,5 +216,7 @@ expect_reject unknown_return_type "scripts/testdata/reject/unknown_return_type.a
 expect_reject unknown_field_type "scripts/testdata/reject/unknown_field_type.agn" "unknown type 'i46' for field 'x' of struct 'Point'"
 expect_reject unknown_array_type "scripts/testdata/reject/unknown_array_type.agn" "unknown type 'u9' for the elements of array 'arr'"
 expect_reject unknown_pointee_type "scripts/testdata/reject/unknown_pointee_type.agn" "unknown type 'flot' for variable 'p'"
+expect_reject eval_outside_nvm "scripts/testdata/reject/eval_outside_nvm.agn" "'eval' is not supported by the llvm backend"
+expect_reject eval_outside_nvm "scripts/testdata/reject/eval_outside_nvm.agn" "'eval' is not supported by the gcc backend" gcc
 
 exit $fail

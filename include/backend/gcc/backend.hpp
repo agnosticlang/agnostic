@@ -17,7 +17,7 @@ public:
     GccBackend(agn::parser::TypeChecker& checker, MemMode mode, const std::string& moduleName);
     ~GccBackend();
 
-    void generate(agn::ast::Program& program);
+    bool generate(agn::ast::Program& program, std::string& errorOut);
     bool emitObjectFile(const std::string& path, std::string& errorOut);
 
 private:

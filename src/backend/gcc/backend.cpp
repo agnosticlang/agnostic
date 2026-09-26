@@ -5,8 +5,7 @@
 #include <libgccjit.h>
 
 #include <algorithm>
-#include <cstdio>
-#include <cstdlib>
+#include <stdexcept>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
@@ -1025,9 +1024,8 @@ struct GccBackend::Impl {
             return TypedValue{castValue(v, target), target};
         }
         if (std::get_if<ast::EvalExpr>(&expr.node)) {
-            std::fprintf(stderr, "error: 'eval' is not supported by the gcc backend "
-                                  "(it only has meaning as an nvm inline-asm escape hatch)\n");
-            std::exit(1);
+            throw std::runtime_error("'eval' is not supported by the gcc backend "
+                                     "(it only has meaning as an nvm inline-asm escape hatch)");
         }
         if (auto* n = std::get_if<ast::FieldAccessExpr>(&expr.node)) {
             auto* id = std::get_if<ast::IdentifierExpr>(&n->object->node);
@@ -1363,10 +1361,16 @@ GccBackend::GccBackend(agn::parser::TypeChecker& checker, MemMode mode, const st
 
 GccBackend::~GccBackend() = default;
 
-void GccBackend::generate(agn::ast::Program& program) {
-    impl_->declareStructs();
-    impl_->declareFunctions(program);
-    impl_->defineAllFunctionBodies(program);
+bool GccBackend::generate(agn::ast::Program& program, std::string& errorOut) {
+    try {
+        impl_->declareStructs();
+        impl_->declareFunctions(program);
+        impl_->defineAllFunctionBodies(program);
+    } catch (const std::runtime_error& e) {
+        errorOut = e.what();
+        return false;
+    }
+    return true;
 }
 
 bool GccBackend::emitObjectFile(const std::string& path, std::string& errorOut) {

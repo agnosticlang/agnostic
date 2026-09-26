@@ -22,8 +22,7 @@
 #include <llvm/TargetParser/Host.h>
 #include <llvm/TargetParser/Triple.h>
 
-#include <cstdio>
-#include <cstdlib>
+#include <stdexcept>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
@@ -1032,9 +1031,8 @@ struct Codegen::Impl {
             return TypedValue{castValue(v, target), target};
         }
         if (std::get_if<ast::EvalExpr>(&expr.node)) {
-            std::fprintf(stderr, "error: 'eval' is not supported by the llvm backend "
-                                  "(it only has meaning as an nvm inline-asm escape hatch)\n");
-            std::exit(1);
+            throw std::runtime_error("'eval' is not supported by the llvm backend "
+                                     "(it only has meaning as an nvm inline-asm escape hatch)");
         }
         if (auto* n = std::get_if<ast::FieldAccessExpr>(&expr.node)) {
             auto* id = std::get_if<ast::IdentifierExpr>(&n->object->node);
@@ -1331,11 +1329,17 @@ Codegen::Codegen(agn::parser::TypeChecker& checker, MemMode mode, const std::str
 
 Codegen::~Codegen() = default;
 
-void Codegen::generate(agn::ast::Program& program) {
-    impl_->declareStructs();
-    impl_->declareFunctions(program);
-    impl_->defineAllFunctionBodies(program);
-    impl_->emitExportWrappers(program);
+bool Codegen::generate(agn::ast::Program& program, std::string& errorOut) {
+    try {
+        impl_->declareStructs();
+        impl_->declareFunctions(program);
+        impl_->defineAllFunctionBodies(program);
+        impl_->emitExportWrappers(program);
+    } catch (const std::runtime_error& e) {
+        errorOut = e.what();
+        return false;
+    }
+    return true;
 }
 
 void Codegen::dumpIR() const { impl_->mod->print(llvm::errs(), nullptr); }
