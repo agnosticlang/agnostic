@@ -4,6 +4,7 @@
 #include "misc/suggest.hpp"
 
 #include <algorithm>
+#include <cstdint>
 #include <cstdio>
 
 namespace agn::parser {
@@ -40,9 +41,57 @@ bool Type::operator==(const Type& other) const {
     }
 }
 
+static int intWidth(TypeKind kind) {
+    switch (kind) {
+        case TypeKind::I8: case TypeKind::U8: return 8;
+        case TypeKind::I32: case TypeKind::U32: return 32;
+        case TypeKind::I64: case TypeKind::U64: return 64;
+        default: return 0;
+    }
+}
+
+static bool isUnsignedKind(TypeKind kind) {
+    return kind == TypeKind::U8 || kind == TypeKind::U32 || kind == TypeKind::U64;
+}
+
+static bool widensLosslessly(const Type& from, const Type& to) {
+    if (!from.isInteger()) return false;
+    if (to.isFloat()) return intWidth(from.kind) <= 32;
+    if (!to.isInteger()) return false;
+    if (isUnsignedKind(from.kind) == isUnsignedKind(to.kind)) return intWidth(to.kind) >= intWidth(from.kind);
+    return isUnsignedKind(from.kind) && intWidth(to.kind) > intWidth(from.kind);
+}
+
+static std::optional<int64_t> integerConstant(const ast::Expression& expr) {
+    if (auto* n = std::get_if<ast::NumberExpr>(&expr.node)) return n->value;
+    if (auto* n = std::get_if<ast::UnaryExpr>(&expr.node)) {
+        if (n->op != ast::UnaryOp::Neg) return std::nullopt;
+        if (auto v = integerConstant(*n->operand)) return -*v;
+    }
+    return std::nullopt;
+}
+
+static bool constantFits(int64_t value, const Type& type) {
+    switch (type.kind) {
+        case TypeKind::I8: return value >= -128 && value <= 127;
+        case TypeKind::I32: return value >= INT32_MIN && value <= INT32_MAX;
+        case TypeKind::I64: return true;
+        case TypeKind::U8: return value >= 0 && value <= 255;
+        case TypeKind::U32: return value >= 0 && value <= UINT32_MAX;
+        case TypeKind::U64: return value >= 0;
+        case TypeKind::F64: return value >= -(int64_t(1) << 53) && value <= (int64_t(1) << 53);
+        default: return false;
+    }
+}
+
+static void wrapInCast(ast::Expression& expr, const Type& to) {
+    auto operand = std::make_unique<ast::Expression>(std::move(expr));
+    expr = ast::Expression{ast::CastExpr{std::move(operand), to.toString()}};
+}
+
 bool Type::canAssignTo(const Type& other) const {
     if (*this == other) return true;
-    if (isNumeric() && other.isNumeric()) return true;
+    if (isNumeric() && other.isNumeric()) return widensLosslessly(*this, other);
     if (kind == TypeKind::Ptr && other.kind == TypeKind::Ptr && pointee->kind == TypeKind::Array &&
         *pointee->elementType == *other.pointee) {
         return true;
@@ -75,6 +124,18 @@ static std::string conversionHint(const Type& from, const Type& to) {
         return " (pointers convert only to and from i64 or u64)";
     }
     return "";
+}
+
+static bool assignable(const ast::Expression& expr, const Type& from, const Type& to) {
+    if (from.canAssignTo(to)) return true;
+    auto value = integerConstant(expr);
+    return value && constantFits(*value, to);
+}
+
+static std::string conversionHint(const ast::Expression& expr, const Type& from, const Type& to) {
+    auto value = integerConstant(expr);
+    if (value && to.isNumeric()) return " (constant " + std::to_string(*value) + " does not fit in " + to.toString() + ")";
+    return conversionHint(from, to);
 }
 
 std::string Type::toString() const {
@@ -232,6 +293,34 @@ void TypeChecker::expectBool(const Type& type, const std::string& what) {
     addError(what + " must be bool, got " + type.toString() + conversionHint(type, Type{TypeKind::Bool}));
 }
 
+Type TypeChecker::unifyOperands(ast::BinaryExpr& bin, const Type& l, const Type& r) {
+    if (!l.isNumeric() || !r.isNumeric()) return l.kind == TypeKind::Unknown ? r : l;
+    if (l == r) return l;
+    auto lc = integerConstant(*bin.left);
+    auto rc = integerConstant(*bin.right);
+    if (rc && !lc) {
+        if (!constantFits(*rc, l)) addError("constant " + std::to_string(*rc) + " does not fit in " + l.toString());
+        wrapInCast(*bin.right, l);
+        return l;
+    }
+    if (lc && !rc) {
+        if (!constantFits(*lc, r)) addError("constant " + std::to_string(*lc) + " does not fit in " + r.toString());
+        wrapInCast(*bin.left, r);
+        return r;
+    }
+    if (l.canAssignTo(r)) {
+        wrapInCast(*bin.left, r);
+        return r;
+    }
+    if (r.canAssignTo(l)) {
+        wrapInCast(*bin.right, l);
+        return l;
+    }
+    addError("mismatched operand types " + l.toString() + " and " + r.toString() +
+             " (convert one side explicitly with 'as')");
+    return l;
+}
+
 void TypeChecker::addError(const std::string& message) {
     errors_.push_back(TypeError{message, currentFunction_.empty() ? "global" : currentFunction_,
                                  currentLine_, currentColumn_});
@@ -372,9 +461,9 @@ void TypeChecker::checkStatement(ast::Statement& stmt) {
                                            : resolveDeclaredType(n->varType, "for variable '" + n->name + "'");
         if (n->value) {
             Type exprType = checkExpression(*n->value);
-            if (!exprType.canAssignTo(declared)) {
+            if (!assignable(*n->value, exprType, declared)) {
                 addError("type mismatch in variable '" + n->name + "': declared as " + declared.toString() +
-                          ", initialized with " + exprType.toString() + conversionHint(exprType, declared));
+                          ", initialized with " + exprType.toString() + conversionHint(*n->value, exprType, declared));
             }
             declareVar(n->name, declared.kind == TypeKind::Unknown ? exprType : declared);
         } else {
@@ -392,9 +481,9 @@ void TypeChecker::checkStatement(ast::Statement& stmt) {
         Type exprType = checkExpression(n->value);
         auto varType = lookupVar(n->name);
         if (!varType) addError("variable '" + n->name + "' not declared" + didYouMean(n->name, visibleVarNames()));
-        else if (!exprType.canAssignTo(*varType)) {
+        else if (!assignable(n->value, exprType, *varType)) {
             addError("type mismatch in assignment to '" + n->name + "': expected " + varType->toString() +
-                      ", got " + exprType.toString() + conversionHint(exprType, *varType));
+                      ", got " + exprType.toString() + conversionHint(n->value, exprType, *varType));
         }
         return;
     }
@@ -405,9 +494,9 @@ void TypeChecker::checkStatement(ast::Statement& stmt) {
         Type indexType = checkExpression(n->index);
         if (!indexType.isNumeric()) addError("array index must be numeric");
         Type valueType = checkExpression(n->value);
-        if (!valueType.canAssignTo(*varType->elementType)) {
+        if (!assignable(n->value, valueType, *varType->elementType)) {
             addError("type mismatch in array assignment: expected " + varType->elementType->toString() +
-                      ", got " + valueType.toString() + conversionHint(valueType, *varType->elementType));
+                      ", got " + valueType.toString() + conversionHint(n->value, valueType, *varType->elementType));
         }
         return;
     }
@@ -417,9 +506,9 @@ void TypeChecker::checkStatement(ast::Statement& stmt) {
             addError("pointer assignment requires a pointer type, got " + targetType.toString());
         }
         Type valueType = checkExpression(n->value);
-        if (targetType.kind == TypeKind::Ptr && !valueType.canAssignTo(*targetType.pointee)) {
+        if (targetType.kind == TypeKind::Ptr && !assignable(n->value, valueType, *targetType.pointee)) {
             addError("type mismatch in pointer assignment: expected " + targetType.pointee->toString() +
-                      ", got " + valueType.toString() + conversionHint(valueType, *targetType.pointee));
+                      ", got " + valueType.toString() + conversionHint(n->value, valueType, *targetType.pointee));
         }
         return;
     }
@@ -435,8 +524,9 @@ void TypeChecker::checkStatement(ast::Statement& stmt) {
         if (it == fields.end()) {
             addError("struct '" + objType.structName + "' has no field '" + n->field + "'" +
                       didYouMean(n->field, fieldNames(objType.structName)));
-        } else if (!valueType.canAssignTo(it->second)) {
-            addError("type mismatch assigning to field '" + n->field + "'");
+        } else if (!assignable(n->value, valueType, it->second)) {
+            addError("type mismatch assigning to field '" + n->field + "': expected " + it->second.toString() +
+                      ", got " + valueType.toString() + conversionHint(n->value, valueType, it->second));
         }
         return;
     }
@@ -465,9 +555,9 @@ void TypeChecker::checkStatement(ast::Statement& stmt) {
         Type expected = returnTypeStack_.empty() ? Type{TypeKind::Void} : returnTypeStack_.back();
         if (n->value) {
             Type got = checkExpression(*n->value);
-            if (!got.canAssignTo(expected)) {
+            if (!assignable(*n->value, got, expected)) {
                 addError("return type mismatch: expected " + expected.toString() + ", got " + got.toString() +
-                          conversionHint(got, expected));
+                          conversionHint(*n->value, got, expected));
             }
         } else if (expected.kind != TypeKind::Void) {
             addError("function must return a value of type " + expected.toString());
@@ -560,18 +650,27 @@ Type TypeChecker::checkExpression(ast::Expression& expr) {
             case ast::BinaryOp::Add: case ast::BinaryOp::Sub: case ast::BinaryOp::Mul: case ast::BinaryOp::Div:
                 if (!l.isNumeric()) addError("left operand must be numeric, got " + l.toString());
                 if (!r.isNumeric()) addError("right operand must be numeric, got " + r.toString());
-                return (l.isFloat() || r.isFloat()) ? Type{TypeKind::F64} : l;
-            case ast::BinaryOp::Mod:
-            case ast::BinaryOp::BitAnd: case ast::BinaryOp::BitOr: case ast::BinaryOp::BitXor:
+                return unifyOperands(*n, l, r);
             case ast::BinaryOp::Shl: case ast::BinaryOp::Shr:
                 if (l.isFloat() || r.isFloat()) {
                     addError("'" + l.toString() + "' and '" + r.toString() +
                              "': this operator does not support float operands");
-                } else {
-                    if (!l.isNumeric()) addError("left operand must be numeric, got " + l.toString());
-                    if (!r.isNumeric()) addError("right operand must be numeric, got " + r.toString());
+                    return l;
                 }
+                if (!l.isNumeric()) addError("left operand must be numeric, got " + l.toString());
+                if (!r.isNumeric()) addError("right operand must be numeric, got " + r.toString());
+                if (l.isInteger() && r.isInteger() && !(l == r)) wrapInCast(*n->right, l);
                 return l;
+            case ast::BinaryOp::Mod:
+            case ast::BinaryOp::BitAnd: case ast::BinaryOp::BitOr: case ast::BinaryOp::BitXor:
+                if (l.isFloat() || r.isFloat()) {
+                    addError("'" + l.toString() + "' and '" + r.toString() +
+                             "': this operator does not support float operands");
+                    return l;
+                }
+                if (!l.isNumeric()) addError("left operand must be numeric, got " + l.toString());
+                if (!r.isNumeric()) addError("right operand must be numeric, got " + r.toString());
+                return unifyOperands(*n, l, r);
             case ast::BinaryOp::Concat:
                 return Type{TypeKind::String};
             case ast::BinaryOp::And: case ast::BinaryOp::Or: {
@@ -581,7 +680,9 @@ Type TypeChecker::checkExpression(ast::Expression& expr) {
                 return Type{TypeKind::Bool};
             }
             case ast::BinaryOp::Equal: case ast::BinaryOp::NotEqual:
-                if (!l.canAssignTo(r) && !r.canAssignTo(l)) {
+                if (l.isNumeric() && r.isNumeric()) {
+                    unifyOperands(*n, l, r);
+                } else if (!l.canAssignTo(r) && !r.canAssignTo(l)) {
                     addError("cannot compare " + l.toString() + " with " + r.toString());
                 }
                 return Type{TypeKind::Bool};
@@ -589,6 +690,7 @@ Type TypeChecker::checkExpression(ast::Expression& expr) {
             case ast::BinaryOp::Greater: case ast::BinaryOp::GreaterEqual:
                 if (l.kind != TypeKind::Unknown && !l.isNumeric()) addError("left operand must be numeric, got " + l.toString());
                 if (r.kind != TypeKind::Unknown && !r.isNumeric()) addError("right operand must be numeric, got " + r.toString());
+                unifyOperands(*n, l, r);
                 return Type{TypeKind::Bool};
         }
         return Type{TypeKind::Unknown};
@@ -620,10 +722,10 @@ Type TypeChecker::checkExpression(ast::Expression& expr) {
             }
             for (size_t i = 0; i < n->args.size() && i < sig.params.size(); i++) {
                 Type argType = checkExpression(n->args[i]);
-                if (!argType.canAssignTo(sig.params[i].second)) {
+                if (!assignable(n->args[i], argType, sig.params[i].second)) {
                     addError("argument " + std::to_string(i) + " of '" + n->function + "': expected " +
                               sig.params[i].second.toString() + ", got " + argType.toString() +
-                              conversionHint(argType, sig.params[i].second));
+                              conversionHint(n->args[i], argType, sig.params[i].second));
                 }
             }
             return sig.returnType;
@@ -636,8 +738,10 @@ Type TypeChecker::checkExpression(ast::Expression& expr) {
             }
             for (size_t i = 0; i < n->args.size() && i < localType->paramTypes.size(); i++) {
                 Type argType = checkExpression(n->args[i]);
-                if (!argType.canAssignTo(localType->paramTypes[i])) {
-                    addError("argument " + std::to_string(i) + " of closure call has wrong type");
+                if (!assignable(n->args[i], argType, localType->paramTypes[i])) {
+                    addError("argument " + std::to_string(i) + " of closure call: expected " +
+                              localType->paramTypes[i].toString() + ", got " + argType.toString() +
+                              conversionHint(n->args[i], argType, localType->paramTypes[i]));
                 }
             }
             return *localType->returnType;
@@ -668,8 +772,10 @@ Type TypeChecker::checkExpression(ast::Expression& expr) {
                 }
                 for (size_t i = 0; i < n->args.size() && i < fnType.paramTypes.size(); i++) {
                     Type argType = checkExpression(n->args[i]);
-                    if (!argType.canAssignTo(fnType.paramTypes[i])) {
-                        addError("argument " + std::to_string(i) + " of '" + n->member + "': wrong type");
+                    if (!assignable(n->args[i], argType, fnType.paramTypes[i])) {
+                        addError("argument " + std::to_string(i) + " of '" + n->member + "': expected " +
+                                  fnType.paramTypes[i].toString() + ", got " + argType.toString() +
+                                  conversionHint(n->args[i], argType, fnType.paramTypes[i]));
                     }
                 }
                 return *fnType.returnType;
@@ -719,10 +825,10 @@ Type TypeChecker::checkExpression(ast::Expression& expr) {
         }
         for (size_t i = 0; i < n->args.size() && i < sig.params.size(); i++) {
             Type argType = checkExpression(n->args[i]);
-            if (!argType.canAssignTo(sig.params[i].second)) {
+            if (!assignable(n->args[i], argType, sig.params[i].second)) {
                 addError("argument " + std::to_string(i) + " of '" + key + "': expected " +
                           sig.params[i].second.toString() + ", got " + argType.toString() +
-                          conversionHint(argType, sig.params[i].second));
+                          conversionHint(n->args[i], argType, sig.params[i].second));
             }
         }
         return sig.returnType;
@@ -805,8 +911,9 @@ Type TypeChecker::checkExpression(ast::Expression& expr) {
             if (it == fields.end()) {
                 addError("struct '" + n->structName + "' has no field '" + fieldName + "'" +
                           didYouMean(fieldName, fieldNames(n->structName)));
-            } else if (!valueType.canAssignTo(it->second)) {
-                addError("type mismatch for field '" + fieldName + "'");
+            } else if (!assignable(fieldExpr, valueType, it->second)) {
+                addError("type mismatch for field '" + fieldName + "': expected " + it->second.toString() + ", got " +
+                          valueType.toString() + conversionHint(fieldExpr, valueType, it->second));
             }
         }
         Type t; t.kind = TypeKind::Struct; t.structName = n->structName;

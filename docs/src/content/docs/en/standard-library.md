@@ -17,6 +17,8 @@ Every function in these modules is a compiler intrinsic: the body written in the
 | `Println` | `(value int)` | writes a decimal integer and a newline |
 | `PrintStr` | `(text string)` | writes a string, no newline |
 | `PrintlnStr` | `(text string)` | writes a string and a newline |
+| `PrintFloat` | `(value float)` | writes an `f64` with six digits after the point, no newline |
+| `PrintlnFloat` | `(value float)` | writes an `f64` with six digits after the point and a newline |
 | `PrintBool` | `(value bool)` | writes `true` or `false`, no newline |
 | `PrintlnBool` | `(value bool)` | writes `true` or `false` and a newline |
 | `PrintChar` | `(ch int)` | writes one byte |
@@ -25,7 +27,7 @@ Every function in these modules is a compiler intrinsic: the body written in the
 | `ReadLine` | `(buffer *u8, maxlen int) int` | reads a line into `buffer`, returns the byte count |
 | `Flush` | `()` | no-op; output is unbuffered |
 
-`Print` and `Println` only accept `int`; passing a `string` or a `bool` is a type error, use `PrintStr`/`PrintlnStr` or `PrintBool`/`PrintlnBool`.
+`Print` and `Println` only accept integers; passing an `f64`, a `string`, or a `bool` is a type error, use `PrintFloat`/`PrintlnFloat`, `PrintStr`/`PrintlnStr`, or `PrintBool`/`PrintlnBool`.
 
 ## math
 

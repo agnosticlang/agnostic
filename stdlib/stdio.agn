@@ -19,6 +19,14 @@ pub fn PrintlnStr(text string) {
     return
 }
 
+pub fn PrintFloat(value float) {
+    return
+}
+
+pub fn PrintlnFloat(value float) {
+    return
+}
+
 pub fn PrintBool(value bool) {
     return
 }

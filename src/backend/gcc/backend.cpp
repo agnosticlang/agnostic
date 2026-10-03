@@ -673,6 +673,11 @@ struct GccBackend::Impl {
             callRt("agn_rt_println_str", voidTy, {ptrTy}, {genExpr(args[0]).value});
             return TypedValue{constI64(0), Type{TypeKind::Void}};
         }
+        if (member == "PrintFloat" || member == "PrintlnFloat") {
+            callRt(member == "PrintlnFloat" ? "agn_rt_println_float" : "agn_rt_print_float", voidTy, {doubleTy},
+                   {genExpr(args[0]).value});
+            return TypedValue{constI64(0), Type{TypeKind::Void}};
+        }
         if (member == "PrintBool" || member == "PrintlnBool") {
             callRt(member == "PrintlnBool" ? "agn_rt_println_bool" : "agn_rt_print_bool", voidTy, {i64Ty},
                    {toI64(genExpr(args[0]))});

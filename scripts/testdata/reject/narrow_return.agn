@@ -1,0 +1,12 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 AnmiTaliDev <anmitalidev@nuros.org>
+
+package main
+
+func low(x int) u8 {
+    return x
+}
+
+func main() {
+    var y u8 = low(3)
+}

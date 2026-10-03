@@ -1,0 +1,10 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 AnmiTaliDev <anmitalidev@nuros.org>
+
+package main
+
+func main() {
+    var a i32 = 1
+    var b u32 = 2
+    var c bool = a < b
+}

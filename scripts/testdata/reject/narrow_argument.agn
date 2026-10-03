@@ -1,0 +1,13 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 AnmiTaliDev <anmitalidev@nuros.org>
+
+package main
+
+func take(x i32) i32 {
+    return x
+}
+
+func main() {
+    var n int = 7
+    var y i32 = take(n)
+}

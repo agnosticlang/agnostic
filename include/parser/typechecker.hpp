@@ -89,6 +89,7 @@ private:
     std::optional<Type> lookupVar(const std::string& name);
     void declareVar(const std::string& name, const Type& type);
 
+    Type unifyOperands(ast::BinaryExpr& bin, const Type& l, const Type& r);
     void expectBool(const Type& type, const std::string& what);
     void addError(const std::string& message);
     std::string didYouMean(const std::string& name, const std::vector<std::string>& candidates) const;

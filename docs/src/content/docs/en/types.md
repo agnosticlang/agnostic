@@ -19,9 +19,9 @@ description: The Agnostic type system.
 | `int` | alias for `i64` |
 | `float` | alias for `f64` |
 
-A literal with a `.` (`3.14`) is `f64`; a literal without one (`3`) is `i64`. Mixing `f64` and an
-integer in arithmetic (`3.14 + 2`) implicitly converts the integer operand to `f64` and the
-expression's type is `f64`; `%` and the bitwise/shift operators do not accept `f64` operands.
+A literal with a `.` (`3.14`) is `f64`; a literal without one (`3`) is `i64`. An integer literal also
+takes the type it is used as when its value fits: `var b u8 = 200` and `3.14 + 2` compile,
+`var b u8 = 256` does not. `%` and the bitwise/shift operators do not accept `f64` operands.
 
 There is no `char` type; a byte read from a string index or `stdio.ReadChar` is an `int`.
 
@@ -103,15 +103,22 @@ Any other cast is a compile error. There is no cast from a number to `bool`; com
 
 A value converts implicitly only in these cases:
 
-- between numeric types (`i64`, `i32`, `i8`, `u64`, `u32`, `u8`, `f64`); the emitted code truncates or extends the value to the target width;
+- from a numeric type to one that holds every value of it: `i8` to `i32` to `i64`, `u8` to `u32` to `u64`, an unsigned type to a wider signed one (`u8` to `i32`, `u32` to `i64`), and `i8`, `i32`, `u8`, `u32` to `f64`;
+- from an integer literal, or a negated one, to any numeric type that holds its value;
 - from `*[N]T` to `*T`;
 - from `*u8`, `*i8`, `*[N]u8`, or `*[N]i8` to `string`.
 
-Any other conversion needs an explicit [cast](#casts) or is a compile error. `bool` and numbers do not convert into each other, and pointers do not convert to or from numbers. The conditions of `if` and `for` and the operands of `!`, `&&`, and `||` must be `bool`. `==` and `!=` need operands of compatible types, and `<`, `<=`, `>`, `>=` need numeric operands. The error message suggests the cast or comparison to write:
+Any other conversion needs an explicit [cast](#casts) or is a compile error. Narrowing (`i64` to `i8`), changing signedness (`i32` to `u32`), `f64` to an integer, and `i64` or `u64` to `f64` all lose values for some inputs, so they are written with `as`. `bool` and numbers do not convert into each other, and pointers do not convert to or from numbers. The conditions of `if` and `for` and the operands of `!`, `&&`, and `||` must be `bool`. `==` and `!=` need operands of compatible types, and `<`, `<=`, `>`, `>=` need numeric operands.
+
+The two operands of an arithmetic, bitwise, or comparison operator are brought to one type first. An integer literal takes the type of the other operand (`x + 1` with `x i8` is `i8`); otherwise the operand of the smaller type converts to the other one by the rules above (`i8 + i64` is `i64`). Operands that neither rule unifies, such as `i32` and `u32` or `f64` and `i64`, are a compile error. The right operand of `<<` and `>>` is a shift count and can be any integer type.
+
+The error message suggests the cast or comparison to write:
 
 ```
 error: type mismatch in variable 'n': declared as i64, initialized with bool (convert explicitly with 'as i64')
 error: condition must be bool, got i64 (compare instead, e.g. 'x != 0')
+error: type mismatch in variable 'b': declared as u8, initialized with i64 (constant 256 does not fit in u8)
+error: mismatched operand types f64 and i64 (convert one side explicitly with 'as')
 ```
 
 ## Generics and pattern matching

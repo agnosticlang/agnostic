@@ -632,6 +632,11 @@ struct Codegen::Impl {
             rt("agn_rt_println_str", voidTy, {ptrTy}, {genExpr(args[0]).value});
             return TypedValue{llvm::ConstantInt::get(i64Ty, 0), Type{TypeKind::Void}};
         }
+        if (member == "PrintFloat" || member == "PrintlnFloat") {
+            rt(member == "PrintlnFloat" ? "agn_rt_println_float" : "agn_rt_print_float", voidTy, {doubleTy},
+               {genExpr(args[0]).value});
+            return TypedValue{llvm::ConstantInt::get(i64Ty, 0), Type{TypeKind::Void}};
+        }
         if (member == "PrintBool" || member == "PrintlnBool") {
             rt(member == "PrintlnBool" ? "agn_rt_println_bool" : "agn_rt_print_bool", voidTy, {i64Ty},
                {toI64(genExpr(args[0]))});
@@ -952,7 +957,9 @@ struct Codegen::Impl {
                 case ast::BinaryOp::BitOr: return TypedValue{builder.CreateOr(lv, rv), resultType};
                 case ast::BinaryOp::BitXor: return TypedValue{builder.CreateXor(lv, rv), resultType};
                 case ast::BinaryOp::Shl: return TypedValue{builder.CreateShl(lv, rv), resultType};
-                case ast::BinaryOp::Shr: return TypedValue{builder.CreateAShr(lv, rv), resultType};
+                case ast::BinaryOp::Shr:
+                    return TypedValue{isUnsignedType(l.type) ? builder.CreateLShr(lv, rv) : builder.CreateAShr(lv, rv),
+                                       resultType};
                 case ast::BinaryOp::Equal: return TypedValue{builder.CreateICmpEQ(lv, rv), Type{TypeKind::Bool}};
                 case ast::BinaryOp::NotEqual: return TypedValue{builder.CreateICmpNE(lv, rv), Type{TypeKind::Bool}};
                 case ast::BinaryOp::Less:

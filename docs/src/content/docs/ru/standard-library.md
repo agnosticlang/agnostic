@@ -17,6 +17,8 @@ description: result, stdio, math, string и os.
 | `Println` | `(value int)` | пишет десятичное целое и перевод строки |
 | `PrintStr` | `(text string)` | пишет строку, без перевода строки |
 | `PrintlnStr` | `(text string)` | пишет строку и перевод строки |
+| `PrintFloat` | `(value float)` | пишет `f64` с шестью знаками после точки, без перевода строки |
+| `PrintlnFloat` | `(value float)` | пишет `f64` с шестью знаками после точки и перевод строки |
 | `PrintBool` | `(value bool)` | пишет `true` или `false`, без перевода строки |
 | `PrintlnBool` | `(value bool)` | пишет `true` или `false` и перевод строки |
 | `PrintChar` | `(ch int)` | пишет один байт |
@@ -25,7 +27,7 @@ description: result, stdio, math, string и os.
 | `ReadLine` | `(buffer *u8, maxlen int) int` | читает строку в `buffer`, возвращает число байт |
 | `Flush` | `()` | ничего не делает; вывод небуферизован |
 
-`Print` и `Println` принимают только `int`; передача `string` или `bool` является ошибкой типов, используйте `PrintStr`/`PrintlnStr` или `PrintBool`/`PrintlnBool`.
+`Print` и `Println` принимают только целые числа; передача `f64`, `string` или `bool` является ошибкой типов, используйте `PrintFloat`/`PrintlnFloat`, `PrintStr`/`PrintlnStr` или `PrintBool`/`PrintlnBool`.
 
 ## math
 

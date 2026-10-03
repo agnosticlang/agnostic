@@ -1,0 +1,43 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 AnmiTaliDev <anmitalidev@nuros.org>
+
+package main
+
+import "stdio"
+
+func widen(x int) int {
+    return x
+}
+
+func main() {
+    var b i8 = -100
+    var u u8 = 200
+    var w int = b
+    var uw u32 = u
+    var iw int = uw
+    stdio.Println(w)
+    stdio.Println(iw)
+    stdio.Println(widen(u))
+
+    var s i8 = b + 27
+    stdio.Println(s)
+    var mixed int = b + w
+    stdio.Println(mixed)
+
+    var f float = 3
+    var g float = u
+    stdio.PrintlnFloat(f + g)
+    stdio.PrintlnFloat(g / 2)
+
+    var big u8 = 250
+    var wrapped u8 = big + 10
+    stdio.Println(wrapped)
+
+    var one u8 = 1
+    var k int = 2
+    stdio.Println(one << 3)
+    stdio.Println(one << k)
+    var top u8 = 255
+    stdio.Println(top >> 1)
+    stdio.PrintlnBool(u > 100)
+}

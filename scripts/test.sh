@@ -194,11 +194,15 @@ expect_llvm_run os_string "scripts/testdata/os_string_test.agn" \
 expect_llvm_run loop_locals "scripts/testdata/loop_locals_test.agn" "1999999"
 expect_llvm_run long_strings "scripts/testdata/long_strings_test.agn" \
     "$(printf '3000\n3050\ntrue\n000255|ff|  255|\n-9223372036854775808')"
+expect_llvm_run numeric_conversions "scripts/testdata/numeric_conversions_test.agn" \
+    "$(printf '%s\n' -100 200 200 -73 -200 203.000000 100.000000 4 8 4 127 true)"
 expect_gcc_run os_string "scripts/testdata/os_string_test.agn" \
     "$(printf 'HELLO\nworld\ntrue\n6\nfalse\ntrue\nfalse\ntrue\nfalse\ntrue\nfalse\ntrue\n101\nworld\nargcount_ok\ntrue\n9')"
 expect_gcc_run loop_locals "scripts/testdata/loop_locals_test.agn" "1999999"
 expect_gcc_run long_strings "scripts/testdata/long_strings_test.agn" \
     "$(printf '3000\n3050\ntrue\n000255|ff|  255|\n-9223372036854775808')"
+expect_gcc_run numeric_conversions "scripts/testdata/numeric_conversions_test.agn" \
+    "$(printf '%s\n' -100 200 200 -73 -200 203.000000 100.000000 4 8 4 127 true)"
 
 expect_freebsd_compile closures "examples/closures.agn"
 expect_freebsd_compile structs "examples/structs.agn"
@@ -282,6 +286,8 @@ expect_windows_run os_string "scripts/testdata/os_string_test.agn" \
 expect_windows_run loop_locals "scripts/testdata/loop_locals_test.agn" "1999999"
 expect_windows_run long_strings "scripts/testdata/long_strings_test.agn" \
     "$(printf '3000\n3050\ntrue\n000255|ff|  255|\n-9223372036854775808')"
+expect_windows_run numeric_conversions "scripts/testdata/numeric_conversions_test.agn" \
+    "$(printf '%s\n' -100 200 200 -73 -200 203.000000 100.000000 4 8 4 127 true)"
 
 expect_reject bool_to_int "scripts/testdata/reject/bool_to_int.agn" "declared as i64, initialized with bool"
 expect_reject int_to_bool "scripts/testdata/reject/int_to_bool.agn" "declared as bool, initialized with i64"
@@ -298,6 +304,17 @@ expect_reject unknown_return_type "scripts/testdata/reject/unknown_return_type.a
 expect_reject unknown_field_type "scripts/testdata/reject/unknown_field_type.agn" "unknown type 'i46' for field 'x' of struct 'Point'"
 expect_reject unknown_array_type "scripts/testdata/reject/unknown_array_type.agn" "unknown type 'u9' for the elements of array 'arr'"
 expect_reject unknown_pointee_type "scripts/testdata/reject/unknown_pointee_type.agn" "unknown type 'flot' for variable 'p'"
+expect_reject narrow_int "scripts/testdata/reject/narrow_int.agn" "declared as i8, initialized with i64 (convert explicitly with 'as i8')"
+expect_reject float_to_int "scripts/testdata/reject/float_to_int.agn" "declared as i64, initialized with f64 (convert explicitly with 'as i64')"
+expect_reject int64_to_float "scripts/testdata/reject/int64_to_float.agn" "declared as f64, initialized with i64 (convert explicitly with 'as f64')"
+expect_reject signed_to_unsigned "scripts/testdata/reject/signed_to_unsigned.agn" "declared as u64, initialized with i8 (convert explicitly with 'as u64')"
+expect_reject constant_overflow "scripts/testdata/reject/constant_overflow.agn" "declared as u8, initialized with i64 (constant 256 does not fit in u8)"
+expect_reject negative_unsigned "scripts/testdata/reject/negative_unsigned.agn" "(constant -1 does not fit in u32)"
+expect_reject operand_constant_overflow "scripts/testdata/reject/operand_constant_overflow.agn" "constant 200 does not fit in i8"
+expect_reject mixed_float_int "scripts/testdata/reject/mixed_float_int.agn" "mismatched operand types f64 and i64 (convert one side explicitly with 'as')"
+expect_reject mixed_signedness "scripts/testdata/reject/mixed_signedness.agn" "mismatched operand types i32 and u32"
+expect_reject narrow_return "scripts/testdata/reject/narrow_return.agn" "return type mismatch: expected u8, got i64 (convert explicitly with 'as u8')"
+expect_reject narrow_argument "scripts/testdata/reject/narrow_argument.agn" "argument 0 of 'take': expected i32, got i64 (convert explicitly with 'as i32')"
 expect_reject lex_unexpected_char "scripts/testdata/reject/lex_unexpected_char.agn" "lex_unexpected_char.agn:7:19"
 expect_reject parse_missing_name "scripts/testdata/reject/parse_missing_name.agn" "expected variable name"
 expect_reject generic_type_arg "scripts/testdata/reject/generic_type_arg.agn" "argument 0 of 'identity' must be a type name (in main)"

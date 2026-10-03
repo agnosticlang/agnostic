@@ -11,7 +11,7 @@ func main() {
     for i < 2000000 {
         var step int = i % 3
         var buf [64]i8
-        buf[0] = step
+        buf[0] = step as i8
         total = total + buf[0]
         i = i + 1
     }
