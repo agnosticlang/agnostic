@@ -33,6 +33,8 @@ Generates native machine code through libgccjit, GCC's embeddable code generatio
 - **manual**: `agn_rt_alloc` only. Nothing is freed automatically.
 - **orc**: region-based. A function call opens a region on entry and frees everything allocated in it, in bulk, on every return path, including `main`. A function opens its own region only when nothing it allocates can outlive the call, which the compiler decides from the types: the return type holds no `string`, pointer, or function, directly or in a struct or array; no parameter is a function or a pointer to such a type (a method's receiver counts as a pointer to its struct); and, for a closure, no captured variable holds one. Any other function allocates in the region of the nearest caller that has its own, so returned strings and closures and values stored through pointers or into captured variables stay valid. Such values live until that caller returns: a loop in `main` that calls a function returning a new string keeps every one of those strings until `main` exits.
 
+In every mode, an allocation the system cannot satisfy prints `fatal error: out of memory` to stderr and exits with code 2.
+
 ## target-os
 
 All four targets have real platform implementations. The `freebsd` target links raw amd64 syscalls directly (no libc) and marks the resulting static ELF as a FreeBSD binary with the FreeBSD ABI note (`.note.tag`, `NT_FREEBSD_ABI_TAG`, OS version 14.0), the same note FreeBSD's own startup files add. The note comes from the FreeBSD startup code, so it works with any linker and both backends. Verified by running compiled binaries from both the `llvm` and `gcc` backends (including closures and structs, which exercise the heap allocator) on a real FreeBSD 15.1 VM.

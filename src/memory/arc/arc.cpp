@@ -11,7 +11,6 @@ struct Header { uint64_t refcount; };
 
 void* alloc(uint64_t size) {
     void* raw = manual::alloc(size + sizeof(Header));
-    if (raw == nullptr) return nullptr;
     auto* h = reinterpret_cast<Header*>(raw);
     h->refcount = 1;
     return reinterpret_cast<char*>(raw) + sizeof(Header);

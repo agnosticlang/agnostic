@@ -65,6 +65,30 @@ expect_mem_run() {
 }
 expect_gcc_run() { expect_run gcc "$1" "$2" "$3"; }
 
+expect_mem_fatal() {
+    mem=$1
+    name=$2
+    path=$3
+    expected_stderr=$4
+    expected_code=$5
+    out="$WORK_DIR/${name}_fatal_${mem}"
+
+    if ! "$AGNOSTIC" "$path" --mem="$mem" --output="$out" >/dev/null 2>&1; then
+        echo "FAIL: $name (mem=$mem) did not compile"
+        fail=1
+        return
+    fi
+
+    if actual_stderr="$(ulimit -v 262144; "$out" 2>&1 >/dev/null)"; then code=0; else code=$?; fi
+    if [ "$code" != "$expected_code" ] || [ "$actual_stderr" != "$expected_stderr" ]; then
+        echo "FAIL: $name (mem=$mem) expected exit $expected_code with: $expected_stderr"
+        echo "  actual: exit $code with: $actual_stderr"
+        fail=1
+        return
+    fi
+    echo "PASS: $name (mem=$mem, fatal)"
+}
+
 expect_hurd_compile() {
     name=$1
     path=$2
@@ -252,6 +276,9 @@ expect_mem_run manual long_strings "scripts/testdata/long_strings_test.agn" \
 expect_mem_run orc long_strings "scripts/testdata/long_strings_test.agn" \
     "$(printf '3000\n3050\ntrue\n000255|ff|  255|\n-9223372036854775808')"
 expect_mem_run orc alloc_stress "scripts/testdata/alloc_stress_test.agn" "400000"
+expect_mem_fatal arc out_of_memory "scripts/testdata/out_of_memory_test.agn" "fatal error: out of memory" 2
+expect_mem_fatal manual out_of_memory "scripts/testdata/out_of_memory_test.agn" "fatal error: out of memory" 2
+expect_mem_fatal orc out_of_memory "scripts/testdata/out_of_memory_test.agn" "fatal error: out of memory" 2
 expect_mem_run manual closures "examples/closures.agn" "$(printf '1\n2\n3\n42')"
 expect_mem_run orc closures "examples/closures.agn" "$(printf '1\n2\n3\n42')"
 expect_mem_run orc closures "examples/closures.agn" "$(printf '1\n2\n3\n42')" gcc

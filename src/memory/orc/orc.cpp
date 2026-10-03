@@ -32,7 +32,6 @@ void* alloc(uint64_t size) {
     if (current == nullptr) enterRegion();
 
     void* ptr = manual::alloc(size);
-    if (ptr == nullptr) return nullptr;
 
     auto* node = reinterpret_cast<Node*>(manual::alloc(sizeof(Node)));
     node->ptr = ptr;

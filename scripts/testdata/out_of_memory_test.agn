@@ -1,0 +1,17 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 AnmiTaliDev <anmitalidev@nuros.org>
+
+package main
+
+import "stdio"
+import "string"
+
+func main() {
+    var s string = "abcdefghijklmnop"
+    var i int = 0
+    for i < 40 {
+        s = s ++ s
+        i = i + 1
+    }
+    stdio.Println(string.len(s))
+}

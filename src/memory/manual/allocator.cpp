@@ -32,8 +32,15 @@ constexpr uint64_t kAlign = 16;
 constexpr uint64_t kMinBlockSize = sizeof(Header) + sizeof(FreeLinks);
 constexpr uint64_t kChunkSize = 1ULL << 16;
 constexpr int kBinCount = 64;
+constexpr uint64_t kMaxAllocSize = 1ULL << 47;
 
 Header* bins[kBinCount];
+
+[[noreturn]] void outOfMemory() {
+    constexpr char message[] = "fatal error: out of memory\n";
+    agn::platform::writeFd(2, message, sizeof(message) - 1);
+    agn::platform::exitProcess(2);
+}
 
 uint64_t roundUp(uint64_t n, uint64_t align) {
     return (n + align - 1) & ~(align - 1);
@@ -72,7 +79,7 @@ void markFree(Header* b, uint64_t size) {
 Header* mapChunk(uint64_t need) {
     uint64_t chunkSize = roundUp(need + sizeof(Header), kChunkSize);
     auto* chunk = static_cast<char*>(agn::platform::mapAnonymous(chunkSize));
-    if (chunk == nullptr) return nullptr;
+    if (chunk == nullptr) outOfMemory();
     auto* fence = reinterpret_cast<Header*>(chunk + chunkSize - sizeof(Header));
     fence->sizeAndFlags = kInUse;
     auto* block = reinterpret_cast<Header*>(chunk);
@@ -100,12 +107,12 @@ Header* findFree(uint64_t need) {
 } // namespace
 
 void* alloc(uint64_t size) {
+    if (size > kMaxAllocSize) outOfMemory();
     uint64_t need = roundUp(size + sizeof(Header), kAlign);
     if (need < kMinBlockSize) need = kMinBlockSize;
 
     Header* b = findFree(need);
     if (b == nullptr) b = mapChunk(need);
-    if (b == nullptr) return nullptr;
     unlinkFree(b);
 
     uint64_t available = blockSize(b);
