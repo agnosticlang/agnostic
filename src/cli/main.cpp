@@ -113,7 +113,7 @@ void reportErrors(const std::string& summary, const std::vector<agn::parser::Typ
 void printUsage(const char* argv0) {
     std::cerr << "Usage: " << argv0 << " <source.agn> [options]\n"
               << "  --backend=llvm|gcc       select codegen backend (default: llvm)\n"
-              << "  --mem=arc|manual|orc     select memory management mode (default: arc; orc allocations don't survive their function)\n"
+              << "  --mem=arc|manual|orc     select memory management mode (default: arc)\n"
               << "  --target-os=linux|freebsd|windows|hurd  (default: linux)\n"
               << "  --output=<path>          output executable path\n"
               << "  -c, --compile-only       emit an object file (<output>.o) instead of linking an executable\n"

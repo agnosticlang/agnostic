@@ -31,7 +31,7 @@ Generates native machine code through libgccjit, GCC's embeddable code generatio
 
 - **arc** (default): reference counting. `agn_rt_retain`/`agn_rt_release` run around bindings that alias an existing value; a fresh construction (a literal, a call result, a struct literal) is not retained again because it already owns its one reference.
 - **manual**: `agn_rt_alloc` only. Nothing is freed automatically.
-- **orc**: region-based. Every function call opens a region on entry and frees everything allocated in it, in bulk, on every return path, including `main`. This is cheaper than `arc` but has a real limitation: a pointer allocated inside a function and returned to (or stored somewhere reachable from) the caller is unsafe once that function's region has been torn down. There is no escape analysis to catch this; it is the caller's responsibility.
+- **orc**: region-based. A function call opens a region on entry and frees everything allocated in it, in bulk, on every return path, including `main`. A function opens its own region only when nothing it allocates can outlive the call, which the compiler decides from the types: the return type holds no `string`, pointer, or function, directly or in a struct or array; no parameter is a function or a pointer to such a type (a method's receiver counts as a pointer to its struct); and, for a closure, no captured variable holds one. Any other function allocates in the region of the nearest caller that has its own, so returned strings and closures and values stored through pointers or into captured variables stay valid. Such values live until that caller returns: a loop in `main` that calls a function returning a new string keeps every one of those strings until `main` exits.
 
 ## target-os
 

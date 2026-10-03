@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # SPDX-FileCopyrightText: 2026 AnmiTaliDev <anmitalidev@nuros.org>
-add_library(agn_parser STATIC parser.cpp typechecker.cpp monomorphize.cpp comptime_eval.cpp)
+add_library(agn_parser STATIC parser.cpp typechecker.cpp monomorphize.cpp comptime_eval.cpp escape.cpp)
 target_include_directories(agn_parser PUBLIC ${PROJECT_SOURCE_DIR}/include)
 target_link_libraries(agn_parser PUBLIC agn_ast agn_misc)

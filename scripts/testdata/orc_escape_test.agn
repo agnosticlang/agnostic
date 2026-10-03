@@ -1,0 +1,96 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 AnmiTaliDev <anmitalidev@nuros.org>
+
+package main
+
+import "stdio"
+import "string"
+
+struct Labeled {
+    label string,
+    n int
+}
+
+func greet(name string) string {
+    return "hello, " ++ name
+}
+
+func greetTwice(name string) string {
+    var once string = greet(name)
+    return once ++ " / " ++ greet(name)
+}
+
+func makeLabel(n int) Labeled {
+    return Labeled{label: "item-$(n)", n: n}
+}
+
+func fill(p *string, n int) {
+    *p = "filled-$(n)"
+}
+
+func fillLocal() int {
+    var s string = ""
+    fill(&s, 7)
+    return string.len(s)
+}
+
+func makeAppender() func(string) -> string {
+    var acc string = ""
+    var add func(string) -> string = func(part string) -> string {
+        acc = acc ++ part
+        return acc
+    }
+    return add
+}
+
+func apply(f func(int) -> int, x int) int {
+    return f(x)
+}
+
+func repeat(s string, n int) string {
+    var out string = ""
+    var i int = 0
+    for i < n {
+        out = out ++ s
+        i = i + 1
+    }
+    return out
+}
+
+func work() int {
+    var s string = repeat("abcdefghij", 50)
+    return string.len(s)
+}
+
+func main() {
+    stdio.PrintlnStr(greetTwice("orc"))
+
+    var l Labeled = makeLabel(42)
+    stdio.PrintlnStr(l.label)
+
+    var s string = ""
+    fill(&s, 3)
+    stdio.PrintlnStr(s)
+    stdio.Println(fillLocal())
+
+    var append func(string) -> string = makeAppender()
+    append("a")
+    append("b")
+    stdio.PrintlnStr(append("c"))
+
+    var seen string = ""
+    var record func(int) -> int = func(x int) -> int {
+        seen = "seen-$(x)"
+        return x * 2
+    }
+    stdio.Println(apply(record, 21))
+    stdio.PrintlnStr(seen)
+
+    var total int = 0
+    var i int = 0
+    for i < 50000 {
+        total = total + work()
+        i = i + 1
+    }
+    stdio.Println(total)
+}

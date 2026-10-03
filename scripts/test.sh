@@ -44,23 +44,24 @@ expect_mem_run() {
     name=$2
     path=$3
     expected_stdout=$4
-    out="$WORK_DIR/${name}_mem_${mem}"
+    backend=${5:-llvm}
+    out="$WORK_DIR/${name}_mem_${mem}_${backend}"
 
-    if ! "$AGNOSTIC" "$path" --mem="$mem" --output="$out" >/dev/null 2>&1; then
-        echo "FAIL: $name (mem=$mem) did not compile"
+    if ! "$AGNOSTIC" "$path" --backend="$backend" --mem="$mem" --output="$out" >/dev/null 2>&1; then
+        echo "FAIL: $name (mem=$mem, $backend) did not compile"
         fail=1
         return
     fi
 
     actual_stdout="$(ulimit -v 262144; "$out")"
     if [ "$actual_stdout" != "$expected_stdout" ]; then
-        echo "FAIL: $name (mem=$mem) stdout mismatch"
+        echo "FAIL: $name (mem=$mem, $backend) stdout mismatch"
         echo "  expected: $expected_stdout"
         echo "  actual:   $actual_stdout"
         fail=1
         return
     fi
-    echo "PASS: $name (mem=$mem)"
+    echo "PASS: $name (mem=$mem, $backend)"
 }
 expect_gcc_run() { expect_run gcc "$1" "$2" "$3"; }
 
@@ -248,8 +249,16 @@ expect_mem_run arc alloc_stress "scripts/testdata/alloc_stress_test.agn" "400000
 expect_mem_run manual alloc_stress "scripts/testdata/alloc_stress_test.agn" "400000"
 expect_mem_run manual long_strings "scripts/testdata/long_strings_test.agn" \
     "$(printf '3000\n3050\ntrue\n000255|ff|  255|\n-9223372036854775808')"
+expect_mem_run orc long_strings "scripts/testdata/long_strings_test.agn" \
+    "$(printf '3000\n3050\ntrue\n000255|ff|  255|\n-9223372036854775808')"
 expect_mem_run orc alloc_stress "scripts/testdata/alloc_stress_test.agn" "400000"
 expect_mem_run manual closures "examples/closures.agn" "$(printf '1\n2\n3\n42')"
+expect_mem_run orc closures "examples/closures.agn" "$(printf '1\n2\n3\n42')"
+expect_mem_run orc closures "examples/closures.agn" "$(printf '1\n2\n3\n42')" gcc
+expect_mem_run orc orc_escape "scripts/testdata/orc_escape_test.agn" \
+    "$(printf 'hello, orc / hello, orc\nitem-42\nfilled-3\n8\nabc\n42\nseen-21\n25000000')"
+expect_mem_run orc orc_escape "scripts/testdata/orc_escape_test.agn" \
+    "$(printf 'hello, orc / hello, orc\nitem-42\nfilled-3\n8\nabc\n42\nseen-21\n25000000')" gcc
 expect_mem_run manual structs "examples/structs.agn" "$(printf '25\n4\n5\n10')"
 expect_mem_run orc structs "examples/structs.agn" "$(printf '25\n4\n5\n10')"
 expect_mem_run manual strings_runtime "scripts/testdata/strings_runtime_test.agn" \

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // SPDX-FileCopyrightText: 2026 AnmiTaliDev <anmitalidev@nuros.org>
 #include "backend/gcc/backend.hpp"
+#include "parser/escape.hpp"
 
 #include <libgccjit.h>
 
@@ -69,6 +70,7 @@ struct GccBackend::Impl {
     gcc_jit_rvalue* curEnv = nullptr;
     Type curReturnType{TypeKind::Void};
     bool curIsMain = false;
+    bool curOwnsRegion = true;
     std::string currentModulePrefix;
     std::vector<std::pair<gcc_jit_block*, gcc_jit_block*>> loopStack; // {continueTarget, breakTarget}
     std::unordered_map<std::string, LocalVar> locals;
@@ -196,12 +198,12 @@ struct GccBackend::Impl {
     }
 
     void callOrcEnterRegion() {
-        if (mode != MemMode::Orc) return;
+        if (mode != MemMode::Orc || !curOwnsRegion) return;
         callRt("agn_rt_orc_enter", voidTy, {}, {});
     }
 
     void callOrcExitRegion() {
-        if (mode != MemMode::Orc) return;
+        if (mode != MemMode::Orc || !curOwnsRegion) return;
         callRt("agn_rt_orc_exit", voidTy, {}, {});
     }
 
@@ -422,6 +424,17 @@ struct GccBackend::Impl {
         }
     }
 
+    std::vector<Type> signatureParamTypes(const FunctionSignature& sig) {
+        std::vector<Type> types;
+        if (sig.receiver) {
+            Type receiver{TypeKind::Ptr};
+            receiver.pointee = std::make_shared<Type>(sig.receiver->second);
+            types.push_back(receiver);
+        }
+        for (auto& param : sig.params) types.push_back(param.second);
+        return types;
+    }
+
     void defineFunction(ast::Function& f, const std::string& modulePrefix) {
         std::string key = modulePrefix.empty() ? funcKey(f) : modulePrefix + "." + f.name;
         gcc_jit_function* fn = functionTable.at(key);
@@ -434,6 +447,7 @@ struct GccBackend::Impl {
         auto* savedEnv = curEnv;
         Type savedRet = curReturnType;
         bool savedIsMain = curIsMain;
+        bool savedOwnsRegion = curOwnsRegion;
         std::string savedModulePrefix = currentModulePrefix;
         auto savedLocals = std::move(locals);
         auto savedArc = std::move(arcTrackedClosures);
@@ -445,6 +459,7 @@ struct GccBackend::Impl {
         curFn = fn;
         curReturnType = sig.returnType;
         curIsMain = isMain;
+        curOwnsRegion = agn::parser::canUseOwnRegion(checker, signatureParamTypes(sig), sig.returnType, {});
         currentModulePrefix = modulePrefix;
 
         switchBlock(gcc_jit_function_new_block(fn, "entry"));
@@ -481,6 +496,7 @@ struct GccBackend::Impl {
         curEnv = savedEnv;
         curReturnType = savedRet;
         curIsMain = savedIsMain;
+        curOwnsRegion = savedOwnsRegion;
         currentModulePrefix = savedModulePrefix;
         locals = std::move(savedLocals);
         arcTrackedClosures = std::move(savedArc);
@@ -515,6 +531,7 @@ struct GccBackend::Impl {
         auto* savedEnv = curEnv;
         Type savedRet = curReturnType;
         bool savedIsMain = curIsMain;
+        bool savedOwnsRegion = curOwnsRegion;
         auto savedLocals = std::move(locals);
         auto savedArc = std::move(arcTrackedClosures);
         auto savedCaptured = std::move(capturedInCurrentFn);
@@ -525,6 +542,9 @@ struct GccBackend::Impl {
         curFn = fn;
         curReturnType = retType;
         curIsMain = false;
+        std::vector<Type> capTypes;
+        for (auto& c : caps) capTypes.push_back(c.type);
+        curOwnsRegion = agn::parser::canUseOwnRegion(checker, paramTypes, retType, capTypes);
 
         switchBlock(gcc_jit_function_new_block(fn, "entry"));
         callOrcEnterRegion();
@@ -555,6 +575,7 @@ struct GccBackend::Impl {
         curEnv = savedEnv;
         curReturnType = savedRet;
         curIsMain = savedIsMain;
+        curOwnsRegion = savedOwnsRegion;
         locals = std::move(savedLocals);
         arcTrackedClosures = std::move(savedArc);
         capturedInCurrentFn = std::move(savedCaptured);

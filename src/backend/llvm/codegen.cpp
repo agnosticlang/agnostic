@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // SPDX-FileCopyrightText: 2026 AnmiTaliDev <anmitalidev@nuros.org>
 #include "backend/llvm/codegen.hpp"
+#include "parser/escape.hpp"
 
 #include <llvm/Config/llvm-config.h>
 #include <llvm/IR/BasicBlock.h>
@@ -77,6 +78,7 @@ struct Codegen::Impl {
     llvm::Value* curEnv = nullptr;
     Type curReturnType{TypeKind::Void};
     bool curIsMain = false;
+    bool curOwnsRegion = true;
     std::string currentModulePrefix;
     std::vector<std::pair<llvm::BasicBlock*, llvm::BasicBlock*>> loopStack; // {continueTarget, breakTarget}
     std::unordered_map<std::string, LocalVar> locals;
@@ -305,13 +307,13 @@ struct Codegen::Impl {
     }
 
     void callOrcEnterRegion() {
-        if (mode != MemMode::Orc) return;
+        if (mode != MemMode::Orc || !curOwnsRegion) return;
         auto* fnTy = llvm::FunctionType::get(voidTy, {}, false);
         builder.CreateCall(getRtFn("agn_rt_orc_enter", fnTy), {});
     }
 
     void callOrcExitRegion() {
-        if (mode != MemMode::Orc) return;
+        if (mode != MemMode::Orc || !curOwnsRegion) return;
         auto* fnTy = llvm::FunctionType::get(voidTy, {}, false);
         builder.CreateCall(getRtFn("agn_rt_orc_exit", fnTy), {});
     }
@@ -443,6 +445,17 @@ struct Codegen::Impl {
         return out;
     }
 
+    std::vector<Type> signatureParamTypes(const FunctionSignature& sig) {
+        std::vector<Type> types;
+        if (sig.receiver) {
+            Type receiver{TypeKind::Ptr};
+            receiver.pointee = std::make_shared<Type>(sig.receiver->second);
+            types.push_back(receiver);
+        }
+        for (auto& param : sig.params) types.push_back(param.second);
+        return types;
+    }
+
     void defineFunction(ast::Function& f, const std::string& modulePrefix) {
         std::string key = modulePrefix.empty() ? funcKey(f) : modulePrefix + "." + f.name;
         llvm::Function* fn = functionTable.at(key);
@@ -453,6 +466,7 @@ struct Codegen::Impl {
         auto* savedEnv = curEnv;
         Type savedRet = curReturnType;
         bool savedIsMain = curIsMain;
+        bool savedOwnsRegion = curOwnsRegion;
         std::string savedModulePrefix = currentModulePrefix;
         auto savedLocals = std::move(locals);
         auto savedArc = std::move(arcTrackedClosures);
@@ -466,6 +480,7 @@ struct Codegen::Impl {
         curFn = fn;
         curReturnType = sig.returnType;
         curIsMain = isMain;
+        curOwnsRegion = agn::parser::canUseOwnRegion(checker, signatureParamTypes(sig), sig.returnType, {});
         currentModulePrefix = modulePrefix;
 
         auto* entry = llvm::BasicBlock::Create(ctx, "entry", fn);
@@ -502,6 +517,7 @@ struct Codegen::Impl {
         curEnv = savedEnv;
         curReturnType = savedRet;
         curIsMain = savedIsMain;
+        curOwnsRegion = savedOwnsRegion;
         currentModulePrefix = savedModulePrefix;
         locals = std::move(savedLocals);
         arcTrackedClosures = std::move(savedArc);
@@ -532,6 +548,7 @@ struct Codegen::Impl {
         auto* savedEnv = curEnv;
         Type savedRet = curReturnType;
         bool savedIsMain = curIsMain;
+        bool savedOwnsRegion = curOwnsRegion;
         auto savedLocals = std::move(locals);
         auto savedArc = std::move(arcTrackedClosures);
         auto savedCaptured = std::move(capturedInCurrentFn);
@@ -544,6 +561,9 @@ struct Codegen::Impl {
         curFn = fn;
         curReturnType = retType;
         curIsMain = false;
+        std::vector<Type> capTypes;
+        for (auto& c : caps) capTypes.push_back(c.type);
+        curOwnsRegion = agn::parser::canUseOwnRegion(checker, paramTypes, retType, capTypes);
 
         auto* entry = llvm::BasicBlock::Create(ctx, "entry", fn);
         builder.SetInsertPoint(entry);
@@ -574,6 +594,7 @@ struct Codegen::Impl {
         curEnv = savedEnv;
         curReturnType = savedRet;
         curIsMain = savedIsMain;
+        curOwnsRegion = savedOwnsRegion;
         locals = std::move(savedLocals);
         arcTrackedClosures = std::move(savedArc);
         capturedInCurrentFn = std::move(savedCaptured);
