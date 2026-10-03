@@ -52,8 +52,7 @@ std::vector<Token> Lexer::tokenize() {
             char ch = pos < input_.size() ? input_[pos] : '\0';
             CompileError err(ErrorKind::Lexer, std::string("unexpected character: '") + ch + "'", file_, line, column);
             err.withSourceLine(agn::misc::extractSourceLine(input_, line));
-            err.display();
-            std::exit(1);
+            throw err;
         }
 
         Token t;

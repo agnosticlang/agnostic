@@ -18,6 +18,7 @@
 #include <set>
 #include <sstream>
 #include <string>
+#include <vector>
 
 namespace fs = std::filesystem;
 
@@ -98,6 +99,17 @@ void loadModules(agn::ast::Program& program, const fs::path& sourceDir, const fs
     }
 }
 
+void reportErrors(const std::string& summary, const std::vector<agn::parser::TypeError>& errors,
+                  const std::string& sourceFile, const std::string& source) {
+    std::cerr << summary << " with " << errors.size() << " error(s):\n";
+    for (auto& e : errors) {
+        agn::misc::CompileError err(agn::misc::ErrorKind::Type, e.message + " (in " + e.location + ")", sourceFile,
+                                     e.line, e.column);
+        err.withSourceLine(agn::misc::extractSourceLine(source, e.line));
+        err.display();
+    }
+}
+
 void printUsage(const char* argv0) {
     std::cerr << "Usage: " << argv0 << " <source.agn> [options]\n"
               << "  --backend=llvm|gcc       select codegen backend (default: llvm)\n"
@@ -160,31 +172,34 @@ int main(int argc, char** argv) {
     if (sourceDir.empty()) sourceDir = ".";
 
     std::string source = readFile(sourceFile);
-    agn::ast::Program program = parseSource(source, sourceFile);
+    agn::ast::Program program;
+    try {
+        program = parseSource(source, sourceFile);
 
-    fs::path resultFile = findModuleFile("result", sourceDir, exeDir);
-    if (resultFile.empty()) {
-        std::cerr << "error: could not find builtin stdlib module 'result' (result.agn)\n";
+        fs::path resultFile = findModuleFile("result", sourceDir, exeDir);
+        if (resultFile.empty()) {
+            std::cerr << "error: could not find builtin stdlib module 'result' (result.agn)\n";
+            return 1;
+        }
+        auto resultProgram = parseSource(readFile(resultFile.string()), resultFile.string());
+        for (auto& s : resultProgram.structs) program.structs.push_back(std::move(s));
+
+        std::set<std::string> loaded;
+        loadModules(program, sourceDir, exeDir, loaded);
+    } catch (const agn::misc::CompileError& err) {
+        err.display();
         return 1;
     }
-    auto resultProgram = parseSource(readFile(resultFile.string()), resultFile.string());
-    for (auto& s : resultProgram.structs) program.structs.push_back(std::move(s));
 
-    std::set<std::string> loaded;
-    loadModules(program, sourceDir, exeDir, loaded);
-
-    agn::parser::monomorphizeGenerics(program, targetOs, "x86_64", memMode);
+    auto monoErrors = agn::parser::monomorphizeGenerics(program, targetOs, "x86_64", memMode);
+    if (!monoErrors.empty()) {
+        reportErrors("generic instantiation failed", monoErrors, sourceFile, source);
+        return 1;
+    }
 
     agn::parser::TypeChecker checker(targetOs, "x86_64", memMode);
     if (!checker.checkProgram(program)) {
-        std::cerr << "type checking failed with " << checker.errors().size() << " error(s):\n";
-        for (auto& e : checker.errors()) {
-            agn::misc::CompileError err(agn::misc::ErrorKind::Type,
-                                         e.message + " (in " + e.location + ")",
-                                         sourceFile, e.line, e.column);
-            err.withSourceLine(agn::misc::extractSourceLine(source, e.line));
-            err.display();
-        }
+        reportErrors("type checking failed", checker.errors(), sourceFile, source);
         return 1;
     }
 

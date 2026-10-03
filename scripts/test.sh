@@ -298,5 +298,11 @@ expect_reject unknown_return_type "scripts/testdata/reject/unknown_return_type.a
 expect_reject unknown_field_type "scripts/testdata/reject/unknown_field_type.agn" "unknown type 'i46' for field 'x' of struct 'Point'"
 expect_reject unknown_array_type "scripts/testdata/reject/unknown_array_type.agn" "unknown type 'u9' for the elements of array 'arr'"
 expect_reject unknown_pointee_type "scripts/testdata/reject/unknown_pointee_type.agn" "unknown type 'flot' for variable 'p'"
+expect_reject lex_unexpected_char "scripts/testdata/reject/lex_unexpected_char.agn" "lex_unexpected_char.agn:7:19"
+expect_reject parse_missing_name "scripts/testdata/reject/parse_missing_name.agn" "expected variable name"
+expect_reject generic_type_arg "scripts/testdata/reject/generic_type_arg.agn" "argument 0 of 'identity' must be a type name (in main)"
+expect_reject generic_value_arg "scripts/testdata/reject/generic_value_arg.agn" "argument 0 of 'scale' must be a compile-time constant"
+expect_reject generic_arity "scripts/testdata/reject/generic_arity.agn" "'Box' expects 1 type argument(s), got 2 (in main)"
+expect_reject generic_recursive "scripts/testdata/reject/generic_recursive.agn" "recursive generic instantiation of 'Node' (in Node)"
 
 exit $fail

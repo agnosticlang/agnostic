@@ -4,8 +4,6 @@
 #include "parser/comptime_eval.hpp"
 
 #include <cctype>
-#include <cstdio>
-#include <cstdlib>
 #include <unordered_map>
 #include <unordered_set>
 
@@ -27,6 +25,12 @@ struct GenericArg {
     ComptimeValue value;
 };
 
+struct SourcePos {
+    std::string location;
+    size_t line = 0;
+    size_t column = 0;
+};
+
 struct MonoState {
     std::unordered_map<std::string, ast::StructDecl> templates;
     std::unordered_set<std::string> registered;
@@ -42,7 +46,14 @@ struct MonoState {
     std::string targetOs;
     std::string targetArch;
     std::string memMode;
+
+    SourcePos pos;
+    std::vector<TypeError> errors;
 };
+
+void addError(MonoState& st, std::string message) {
+    st.errors.push_back(TypeError{std::move(message), st.pos.location, st.pos.line, st.pos.column});
+}
 
 std::string rewriteTypeString(const std::string& s, MonoState& st, const Subst* subst);
 void rewriteStmt(ast::Statement& s, MonoState& st, const GenSubst& subst);
@@ -249,30 +260,33 @@ std::string instantiate(const std::string& name, const std::vector<std::string>&
     std::string mangled = mangle(name, args);
     if (st.registered.count(mangled)) return mangled;
     if (st.inProgress.count(mangled)) {
-        std::fprintf(stderr, "error: recursive generic instantiation of '%s'\n", name.c_str());
-        std::exit(1);
+        addError(st, "recursive generic instantiation of '" + name + "'");
+        return mangled;
     }
     auto tmplIt = st.templates.find(name);
     if (tmplIt == st.templates.end()) {
-        std::fprintf(stderr, "error: '%s' is not a declared generic struct\n", name.c_str());
-        std::exit(1);
+        addError(st, "'" + name + "' is not a declared generic struct");
+        return mangled;
     }
     const ast::StructDecl& tmpl = tmplIt->second;
     if (tmpl.typeParams.size() != args.size()) {
-        std::fprintf(stderr, "error: '%s' expects %zu type argument(s), got %zu\n", name.c_str(),
-                     tmpl.typeParams.size(), args.size());
-        std::exit(1);
+        addError(st, "'" + name + "' expects " + std::to_string(tmpl.typeParams.size()) + " type argument(s), got " +
+                         std::to_string(args.size()));
+        return mangled;
     }
 
     Subst subst;
     for (size_t i = 0; i < tmpl.typeParams.size(); i++) subst[tmpl.typeParams[i]] = args[i];
 
     st.inProgress.insert(mangled);
+    SourcePos savedPos = st.pos;
     std::vector<ast::Parameter> concreteFields;
     for (auto& f : tmpl.fields) {
+        st.pos = SourcePos{tmpl.name, f.line, f.column};
         concreteFields.push_back(
             ast::Parameter{f.name, rewriteTypeString(f.type, st, &subst), false, f.line, f.column});
     }
+    st.pos = savedPos;
     st.inProgress.erase(mangled);
     st.registered.insert(mangled);
 
@@ -335,6 +349,8 @@ std::string rewriteTypeString(const std::string& s, MonoState& st, const Subst* 
 }
 
 void rewriteStmt(ast::Statement& s, MonoState& st, const GenSubst& subst) {
+    st.pos.line = s.line;
+    st.pos.column = s.column;
     std::visit(
         [&](auto& node) {
             using T = std::decay_t<decltype(node)>;
@@ -410,9 +426,9 @@ void rewriteExpr(ast::Expression& e, MonoState& st, const GenSubst& subst) {
                         if (param.type == "type") {
                             auto* ident = std::get_if<ast::IdentifierExpr>(&node.args[idx].node);
                             if (!ident) {
-                                std::fprintf(stderr, "error: argument %zu of '%s' must be a type name\n", idx,
-                                             node.function.c_str());
-                                std::exit(1);
+                                addError(st, "argument " + std::to_string(idx) + " of '" + node.function +
+                                                 "' must be a type name");
+                                return;
                             }
                             std::string typeName = ident->name;
                             if (subst.types) {
@@ -424,10 +440,9 @@ void rewriteExpr(ast::Expression& e, MonoState& st, const GenSubst& subst) {
                             ComptimeEvaluator evaluator(*st.program, st.targetOs, st.targetArch, st.memMode);
                             auto val = evaluator.eval(node.args[idx]);
                             if (!val) {
-                                std::fprintf(stderr,
-                                             "error: argument %zu of '%s' must be a compile-time constant: %s\n",
-                                             idx, node.function.c_str(), evaluator.lastError().c_str());
-                                std::exit(1);
+                                addError(st, "argument " + std::to_string(idx) + " of '" + node.function +
+                                                 "' must be a compile-time constant: " + evaluator.lastError());
+                                return;
                             }
                             args.push_back(GenericArg{false, "", *val});
                         }
@@ -477,13 +492,13 @@ std::string instantiateFunction(const std::string& name, const std::vector<Gener
     std::string mangled = mangle(name, keys);
     if (st.registeredFns.count(mangled)) return mangled;
     if (st.inProgressFns.count(mangled)) {
-        std::fprintf(stderr, "error: recursive generic instantiation of '%s'\n", name.c_str());
-        std::exit(1);
+        addError(st, "recursive generic instantiation of '" + name + "'");
+        return mangled;
     }
     auto tmplIt = st.functionTemplates.find(name);
     if (tmplIt == st.functionTemplates.end()) {
-        std::fprintf(stderr, "error: '%s' is not a declared generic function\n", name.c_str());
-        std::exit(1);
+        addError(st, "'" + name + "' is not a declared generic function");
+        return mangled;
     }
     const ast::Function& tmpl = tmplIt->second;
 
@@ -492,9 +507,9 @@ std::string instantiateFunction(const std::string& name, const std::vector<Gener
         if (p.isComptime) comptimeParams.push_back(&p);
     }
     if (comptimeParams.size() != args.size()) {
-        std::fprintf(stderr, "error: '%s' expects %zu compile-time argument(s), got %zu\n", name.c_str(),
-                     comptimeParams.size(), args.size());
-        std::exit(1);
+        addError(st, "'" + name + "' expects " + std::to_string(comptimeParams.size()) +
+                         " compile-time argument(s), got " + std::to_string(args.size()));
+        return mangled;
     }
 
     Subst typeSubst;
@@ -506,6 +521,8 @@ std::string instantiateFunction(const std::string& name, const std::vector<Gener
     GenSubst subst{&typeSubst, &valueSubst};
 
     st.inProgressFns.insert(mangled);
+    SourcePos savedPos = st.pos;
+    st.pos = SourcePos{name, tmpl.line, tmpl.column};
 
     ast::Function concrete;
     concrete.name = mangled;
@@ -520,6 +537,7 @@ std::string instantiateFunction(const std::string& name, const std::vector<Gener
     concrete.returnType = rewriteTypeString(tmpl.returnType, st, subst.types);
     concrete.body = cloneStmts(tmpl.body);
     for (auto& s : concrete.body) rewriteStmt(s, st, subst);
+    st.pos = savedPos;
 
     st.inProgressFns.erase(mangled);
     st.registeredFns.insert(mangled);
@@ -528,6 +546,7 @@ std::string instantiateFunction(const std::string& name, const std::vector<Gener
 }
 
 void rewriteFunction(ast::Function& f, MonoState& st) {
+    st.pos = SourcePos{f.name, f.line, f.column};
     GenSubst subst{};
     if (f.receiver) f.receiver->type = rewriteTypeString(f.receiver->type, st, subst.types);
     for (auto& p : f.params) p.type = rewriteTypeString(p.type, st, subst.types);
@@ -537,8 +556,8 @@ void rewriteFunction(ast::Function& f, MonoState& st) {
 
 } // namespace
 
-void monomorphizeGenerics(ast::Program& program, const std::string& targetOs, const std::string& targetArch,
-                           const std::string& memMode) {
+std::vector<TypeError> monomorphizeGenerics(ast::Program& program, const std::string& targetOs,
+                                            const std::string& targetArch, const std::string& memMode) {
     MonoState st;
     st.program = &program;
     st.targetOs = targetOs;
@@ -556,7 +575,10 @@ void monomorphizeGenerics(ast::Program& program, const std::string& targetOs, co
     program.structs = std::move(concrete);
 
     for (auto& s : program.structs) {
-        for (auto& f : s.fields) f.type = rewriteTypeString(f.type, st, nullptr);
+        for (auto& f : s.fields) {
+            st.pos = SourcePos{s.name, f.line, f.column};
+            f.type = rewriteTypeString(f.type, st, nullptr);
+        }
     }
 
     std::vector<ast::Function> concreteFns;
@@ -581,6 +603,7 @@ void monomorphizeGenerics(ast::Program& program, const std::string& targetOs, co
 
     for (auto& s : st.newStructs) program.structs.push_back(std::move(s));
     for (auto& f : st.newFunctions) program.functions.push_back(std::move(f));
+    return std::move(st.errors);
 }
 
 } // namespace agn::parser

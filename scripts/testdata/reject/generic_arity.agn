@@ -1,0 +1,12 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 AnmiTaliDev <anmitalidev@nuros.org>
+
+package main
+
+struct Box<T> {
+    value T
+}
+
+func main() {
+    var b Box<int, int>
+}

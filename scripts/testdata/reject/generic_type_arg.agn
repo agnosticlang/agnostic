@@ -1,0 +1,12 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 AnmiTaliDev <anmitalidev@nuros.org>
+
+package main
+
+func identity(comptime T type, x T) T {
+    return x
+}
+
+func main() {
+    var y int = identity(1 + 2, 3)
+}

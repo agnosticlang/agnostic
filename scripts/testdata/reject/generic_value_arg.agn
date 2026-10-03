@@ -1,0 +1,13 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 AnmiTaliDev <anmitalidev@nuros.org>
+
+package main
+
+func scale(comptime n int, x int) int {
+    return x * n
+}
+
+func main() {
+    var k int = 2
+    var y int = scale(k, 3)
+}

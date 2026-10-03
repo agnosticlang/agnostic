@@ -1,0 +1,13 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 AnmiTaliDev <anmitalidev@nuros.org>
+
+package main
+
+struct Node<T> {
+    value T,
+    next Node<T>
+}
+
+func main() {
+    var n Node<int>
+}

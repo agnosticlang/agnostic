@@ -5,7 +5,6 @@
 #include "misc/diagnostic.hpp"
 
 #include <cctype>
-#include <cstdlib>
 
 namespace agn::parser {
 
@@ -57,8 +56,7 @@ void Parser::expect(TokenKind kind) {
 void Parser::error(const std::string& message) const {
     CompileError err(ErrorKind::Parser, message, file_, current().line, current().column);
     err.withSourceLine(agn::misc::extractSourceLine(source_, current().line));
-    err.display();
-    std::exit(1);
+    throw err;
 }
 
 ast::Program Parser::parse() {
