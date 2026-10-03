@@ -3,17 +3,17 @@
 add_library(agn_memory_orc STATIC orc.cpp rt_shim.cpp)
 target_include_directories(agn_memory_orc PUBLIC ${PROJECT_SOURCE_DIR}/include)
 target_link_libraries(agn_memory_orc PUBLIC agn_memory_manual)
-target_compile_options(agn_memory_orc PRIVATE -ffreestanding -fno-exceptions -fno-rtti)
+target_compile_options(agn_memory_orc PRIVATE -ffreestanding -fno-exceptions -fno-rtti -fno-stack-protector)
 
 add_library(agn_memory_orc_freebsd STATIC orc.cpp rt_shim.cpp)
 target_include_directories(agn_memory_orc_freebsd PUBLIC ${PROJECT_SOURCE_DIR}/include)
 target_link_libraries(agn_memory_orc_freebsd PUBLIC agn_memory_manual_freebsd)
-target_compile_options(agn_memory_orc_freebsd PRIVATE -ffreestanding -fno-exceptions -fno-rtti)
+target_compile_options(agn_memory_orc_freebsd PRIVATE -ffreestanding -fno-exceptions -fno-rtti -fno-stack-protector)
 
 add_library(agn_memory_orc_hurd STATIC orc.cpp rt_shim.cpp)
 target_include_directories(agn_memory_orc_hurd PUBLIC ${PROJECT_SOURCE_DIR}/include)
 target_link_libraries(agn_memory_orc_hurd PUBLIC agn_memory_manual_hurd)
-target_compile_options(agn_memory_orc_hurd PRIVATE -ffreestanding -fno-exceptions -fno-rtti)
+target_compile_options(agn_memory_orc_hurd PRIVATE -ffreestanding -fno-exceptions -fno-rtti -fno-stack-protector)
 
 if(AGN_WINDOWS_TARGET)
   agn_add_windows_library(agn_memory_orc_windows SOURCES orc.cpp rt_shim.cpp)
