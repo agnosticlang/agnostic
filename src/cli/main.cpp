@@ -11,6 +11,7 @@
 
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
@@ -19,6 +20,11 @@
 #include <sstream>
 #include <string>
 #include <vector>
+
+#include <spawn.h>
+#include <sys/wait.h>
+
+extern char** environ;
 
 namespace fs = std::filesystem;
 
@@ -108,6 +114,22 @@ void reportErrors(const std::string& summary, const std::vector<agn::parser::Typ
         err.withSourceLine(agn::misc::extractSourceLine(source, e.line));
         err.display();
     }
+}
+
+bool runTool(const std::vector<std::string>& args) {
+    std::vector<char*> argv;
+    for (auto& a : args) argv.push_back(const_cast<char*>(a.c_str()));
+    argv.push_back(nullptr);
+
+    pid_t pid;
+    int err = posix_spawnp(&pid, argv[0], nullptr, nullptr, argv.data(), environ);
+    if (err != 0) {
+        std::cerr << "error: could not run '" << args[0] << "': " << std::strerror(err) << "\n";
+        return false;
+    }
+    int status = 0;
+    waitpid(pid, &status, 0);
+    return WIFEXITED(status) && WEXITSTATUS(status) == 0;
 }
 
 void printUsage(const char* argv0) {
@@ -277,22 +299,23 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    std::string libGroup = "\"" + runtimeLib.string() + "\" \"" + memoryLib.string() + "\"";
-    if (memMode != "manual") libGroup += " \"" + manualLib.string() + "\"";
-    libGroup += " \"" + platformLib.string() + "\"";
+    std::vector<std::string> libs = {runtimeLib.string(), memoryLib.string()};
+    if (memMode != "manual") libs.push_back(manualLib.string());
+    libs.push_back(platformLib.string());
 
     std::string exePath = finalOutput;
-    std::string linkCmd;
+    std::vector<std::string> linkArgs;
     if (targetOs == "windows") {
         if (fs::path(exePath).extension() != ".exe") exePath += ".exe";
-        linkCmd = "lld-link -nologo -subsystem:console -entry:agn_start -nodefaultlib -out:\"" + exePath + "\" \"" +
-                  objPath + "\" " + libGroup;
+        linkArgs = {"lld-link", "-nologo", "-subsystem:console", "-entry:agn_start", "-nodefaultlib",
+                    "-out:" + exePath, objPath};
+        linkArgs.insert(linkArgs.end(), libs.begin(), libs.end());
     } else {
-        linkCmd = "cc -nostdlib -static -no-pie -e _start -o \"" + exePath + "\" \"" + objPath +
-                  "\" -Wl,--start-group " + libGroup + " -Wl,--end-group";
+        linkArgs = {"cc", "-nostdlib", "-static", "-no-pie", "-e", "_start", "-o", exePath, objPath, "-Wl,--start-group"};
+        linkArgs.insert(linkArgs.end(), libs.begin(), libs.end());
+        linkArgs.push_back("-Wl,--end-group");
     }
-    int rc = std::system(linkCmd.c_str());
-    if (rc != 0) {
+    if (!runTool(linkArgs)) {
         std::cerr << "error: linking failed (object file kept at " << objPath << ")\n";
         return 1;
     }
