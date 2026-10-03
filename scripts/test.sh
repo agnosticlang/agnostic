@@ -192,9 +192,13 @@ expect_gcc_run string_stdlib "scripts/testdata/string_test.agn" \
 expect_llvm_run os_string "scripts/testdata/os_string_test.agn" \
     "$(printf 'HELLO\nworld\ntrue\n6\nfalse\ntrue\nfalse\ntrue\nfalse\ntrue\nfalse\ntrue\n101\nworld\nargcount_ok\ntrue\n9')"
 expect_llvm_run loop_locals "scripts/testdata/loop_locals_test.agn" "1999999"
+expect_llvm_run long_strings "scripts/testdata/long_strings_test.agn" \
+    "$(printf '3000\n3050\ntrue\n000255|ff|  255|\n-9223372036854775808')"
 expect_gcc_run os_string "scripts/testdata/os_string_test.agn" \
     "$(printf 'HELLO\nworld\ntrue\n6\nfalse\ntrue\nfalse\ntrue\nfalse\ntrue\nfalse\ntrue\n101\nworld\nargcount_ok\ntrue\n9')"
 expect_gcc_run loop_locals "scripts/testdata/loop_locals_test.agn" "1999999"
+expect_gcc_run long_strings "scripts/testdata/long_strings_test.agn" \
+    "$(printf '3000\n3050\ntrue\n000255|ff|  255|\n-9223372036854775808')"
 
 expect_freebsd_compile closures "examples/closures.agn"
 expect_freebsd_compile structs "examples/structs.agn"
@@ -238,6 +242,8 @@ expect_hurd_compile os_string "scripts/testdata/os_string_test.agn"
 
 expect_mem_run arc alloc_stress "scripts/testdata/alloc_stress_test.agn" "400000"
 expect_mem_run manual alloc_stress "scripts/testdata/alloc_stress_test.agn" "400000"
+expect_mem_run manual long_strings "scripts/testdata/long_strings_test.agn" \
+    "$(printf '3000\n3050\ntrue\n000255|ff|  255|\n-9223372036854775808')"
 expect_mem_run orc alloc_stress "scripts/testdata/alloc_stress_test.agn" "400000"
 expect_mem_run manual closures "examples/closures.agn" "$(printf '1\n2\n3\n42')"
 expect_mem_run manual structs "examples/structs.agn" "$(printf '25\n4\n5\n10')"
@@ -274,6 +280,8 @@ expect_windows_run string_stdlib "scripts/testdata/string_test.agn" \
 expect_windows_run os_string "scripts/testdata/os_string_test.agn" \
     "$(printf 'HELLO\nworld\ntrue\n6\nfalse\ntrue\nfalse\ntrue\nfalse\ntrue\nfalse\ntrue\n101\nworld\nargcount_ok\ntrue\n9')"
 expect_windows_run loop_locals "scripts/testdata/loop_locals_test.agn" "1999999"
+expect_windows_run long_strings "scripts/testdata/long_strings_test.agn" \
+    "$(printf '3000\n3050\ntrue\n000255|ff|  255|\n-9223372036854775808')"
 
 expect_reject bool_to_int "scripts/testdata/reject/bool_to_int.agn" "declared as i64, initialized with bool"
 expect_reject int_to_bool "scripts/testdata/reject/int_to_bool.agn" "declared as bool, initialized with i64"

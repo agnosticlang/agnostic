@@ -1,0 +1,33 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 AnmiTaliDev <anmitalidev@nuros.org>
+
+package main
+
+import "stdio"
+import "string"
+
+func repeat(s string, n int) string {
+    var out string = ""
+    var i int = 0
+    for i < n {
+        out = out ++ s
+        i = i + 1
+    }
+    return out
+}
+
+func describe(s string, n int) string {
+    return "[$(s)] n=$(n:040d) h=$(n:X)"
+}
+
+func main() {
+    var big string = repeat("abcdefghij", 300)
+    stdio.Println(string.len(big))
+    var t string = describe(big, 255)
+    stdio.Println(string.len(t))
+    stdio.PrintlnBool(string.endsWith(t, "0255 h=FF"))
+    var n int = 255
+    stdio.PrintlnStr("$(n:06d)|$(n:x)|$(n:5)|")
+    var m int = 0 - 9223372036854775807 - 1
+    stdio.PrintlnStr("$(m)")
+}

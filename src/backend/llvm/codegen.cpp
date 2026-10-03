@@ -22,6 +22,7 @@
 #include <llvm/TargetParser/Host.h>
 #include <llvm/TargetParser/Triple.h>
 
+#include <algorithm>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
@@ -691,16 +692,7 @@ struct Codegen::Impl {
         if (member == "concat") {
             auto* s1 = genExpr(args[0]).value;
             auto* s2 = genExpr(args[1]).value;
-            auto* len1 = rt("agn_rt_strlen", i64Ty, {ptrTy}, {s1});
-            auto* len2 = rt("agn_rt_strlen", i64Ty, {ptrTy}, {s2});
-            auto* total = builder.CreateAdd(builder.CreateAdd(len1, len2), llvm::ConstantInt::get(i64Ty, 1));
-            auto* buf = callRtAlloc(total);
-            rt("agn_rt_memcpy", voidTy, {ptrTy, ptrTy, i64Ty}, {buf, s1, len1});
-            auto* tail = builder.CreateGEP(i8Ty, buf, {len1});
-            rt("agn_rt_memcpy", voidTy, {ptrTy, ptrTy, i64Ty}, {tail, s2, len2});
-            auto* end = builder.CreateGEP(i8Ty, buf, {builder.CreateAdd(len1, len2)});
-            builder.CreateStore(llvm::ConstantInt::get(i8Ty, 0), end);
-            return TypedValue{buf, Type{TypeKind::String}};
+            return genConcat(s1, s2);
         }
         if (member == "indexOf") {
             auto* call = rt("agn_rt_index_of", i64Ty, {ptrTy, ptrTy},
@@ -792,79 +784,81 @@ struct Codegen::Impl {
         return TypedValue{llvm::ConstantInt::get(i64Ty, 0), Type{TypeKind::Unknown}};
     }
 
-    void appendToBuffer(llvm::Value* buf, llvm::Value* posAlloca, llvm::Value* src, llvm::Value* len) {
-        auto* pos = builder.CreateLoad(i64Ty, posAlloca);
-        auto* dest = builder.CreateGEP(i8Ty, buf, {pos});
-        auto* memcpyTy = llvm::FunctionType::get(voidTy, {ptrTy, ptrTy, i64Ty}, false);
-        builder.CreateCall(getRtFn("agn_rt_memcpy", memcpyTy), {dest, src, len});
-        builder.CreateStore(builder.CreateAdd(pos, len), posAlloca);
-    }
-
     TypedValue genTemplateString(ast::TemplateStringExpr& tmpl) {
-        auto* buf = builder.CreateAlloca(i8Ty, llvm::ConstantInt::get(i64Ty, 1024), "tmplbuf");
-        auto* posAlloca = entryAlloca(i64Ty, "tmplpos");
-        builder.CreateStore(llvm::ConstantInt::get(i64Ty, 0), posAlloca);
+        struct Piece {
+            llvm::Value* value;
+            llvm::Value* len;
+            int64_t width = 0;
+            bool padZero = false, hex = false, upper = false;
+        };
+        auto* strlenTy = llvm::FunctionType::get(i64Ty, {ptrTy}, false);
+        std::vector<Piece> pieces;
+        llvm::Value* total = llvm::ConstantInt::get(i64Ty, 1);
 
         for (auto& part : tmpl.parts) {
             if (auto* lit = std::get_if<ast::TemplateLiteralPart>(&part)) {
-                auto* g = getStringLiteral(lit->text);
-                appendToBuffer(buf, posAlloca, g, llvm::ConstantInt::get(i64Ty, lit->text.size()));
+                auto* len = llvm::ConstantInt::get(i64Ty, lit->text.size());
+                pieces.push_back(Piece{getStringLiteral(lit->text), len});
+                total = builder.CreateAdd(total, len);
                 continue;
             }
             auto* e = std::get_if<ast::TemplateExprPart>(&part);
             auto val = genExpr(*e->expr);
             if (val.type.kind == TypeKind::String) {
-                auto* fnTy = llvm::FunctionType::get(i64Ty, {ptrTy}, false);
-                auto* len = builder.CreateCall(getRtFn("agn_rt_strlen", fnTy), {val.value});
-                appendToBuffer(buf, posAlloca, val.value, len);
+                auto* len = builder.CreateCall(getRtFn("agn_rt_strlen", strlenTy), {val.value});
+                pieces.push_back(Piece{val.value, len});
+                total = builder.CreateAdd(total, len);
                 continue;
             }
 
-            long width = 0;
-            bool padZero = false;
-            bool hex = false, upper = false;
+            Piece piece{toI64(val), nullptr};
             if (e->format) {
-                width = static_cast<long>(e->format->width.value_or(0));
-                padZero = e->format->padding == '0';
-                hex = e->format->formatType == ast::FormatType::Hex || e->format->formatType == ast::FormatType::HexUpper;
-                upper = e->format->formatType == ast::FormatType::HexUpper;
+                piece.width = static_cast<int64_t>(e->format->width.value_or(0));
+                piece.padZero = e->format->padding == '0';
+                piece.hex = e->format->formatType == ast::FormatType::Hex || e->format->formatType == ast::FormatType::HexUpper;
+                piece.upper = e->format->formatType == ast::FormatType::HexUpper;
             }
-
-            auto* pos = builder.CreateLoad(i64Ty, posAlloca);
-            auto* dest = builder.CreateGEP(i8Ty, buf, {pos});
-            llvm::Value* written;
-            if (hex) {
-                auto* fnTy = llvm::FunctionType::get(i64Ty, {ptrTy, i64Ty, i64Ty, i64Ty, i64Ty}, false);
-                written = builder.CreateCall(getRtFn("agn_rt_format_hex", fnTy),
-                                              {dest, toI64(val), llvm::ConstantInt::get(i64Ty, width),
-                                               llvm::ConstantInt::get(i64Ty, padZero ? 1 : 0),
-                                               llvm::ConstantInt::get(i64Ty, upper ? 1 : 0)});
-            } else {
-                auto* fnTy = llvm::FunctionType::get(i64Ty, {ptrTy, i64Ty, i64Ty, i64Ty}, false);
-                written = builder.CreateCall(getRtFn("agn_rt_format_int", fnTy),
-                                              {dest, toI64(val), llvm::ConstantInt::get(i64Ty, width),
-                                               llvm::ConstantInt::get(i64Ty, padZero ? 1 : 0)});
-            }
-            builder.CreateStore(builder.CreateAdd(pos, written), posAlloca);
+            int64_t maxDigits = piece.hex ? 16 : 20;
+            total = builder.CreateAdd(total, llvm::ConstantInt::get(i64Ty, std::max(piece.width, maxDigits)));
+            pieces.push_back(piece);
         }
 
-        auto* pos = builder.CreateLoad(i64Ty, posAlloca);
-        auto* endPtr = builder.CreateGEP(i8Ty, buf, {pos});
-        builder.CreateStore(llvm::ConstantInt::get(i8Ty, 0), endPtr);
+        auto* buf = callRtAlloc(total);
+        auto* memcpyTy = llvm::FunctionType::get(voidTy, {ptrTy, ptrTy, i64Ty}, false);
+        auto* hexTy = llvm::FunctionType::get(i64Ty, {ptrTy, i64Ty, i64Ty, i64Ty, i64Ty}, false);
+        auto* intTy = llvm::FunctionType::get(i64Ty, {ptrTy, i64Ty, i64Ty, i64Ty}, false);
+        llvm::Value* pos = llvm::ConstantInt::get(i64Ty, 0);
+        for (auto& piece : pieces) {
+            auto* dest = builder.CreateGEP(i8Ty, buf, {pos});
+            llvm::Value* written = piece.len;
+            if (piece.len) {
+                builder.CreateCall(getRtFn("agn_rt_memcpy", memcpyTy), {dest, piece.value, piece.len});
+            } else if (piece.hex) {
+                written = builder.CreateCall(getRtFn("agn_rt_format_hex", hexTy),
+                                             {dest, piece.value, llvm::ConstantInt::get(i64Ty, piece.width),
+                                              llvm::ConstantInt::get(i64Ty, piece.padZero ? 1 : 0),
+                                              llvm::ConstantInt::get(i64Ty, piece.upper ? 1 : 0)});
+            } else {
+                written = builder.CreateCall(getRtFn("agn_rt_format_int", intTy),
+                                             {dest, piece.value, llvm::ConstantInt::get(i64Ty, piece.width),
+                                              llvm::ConstantInt::get(i64Ty, piece.padZero ? 1 : 0)});
+            }
+            pos = builder.CreateAdd(pos, written);
+        }
+        builder.CreateStore(llvm::ConstantInt::get(i8Ty, 0), builder.CreateGEP(i8Ty, buf, {pos}));
         return TypedValue{buf, Type{TypeKind::String}};
     }
 
-    TypedValue genConcat(TypedValue& lhs, TypedValue& rhs) {
+    TypedValue genConcat(llvm::Value* s1, llvm::Value* s2) {
         auto* strlenTy = llvm::FunctionType::get(i64Ty, {ptrTy}, false);
         auto* memcpyTy = llvm::FunctionType::get(voidTy, {ptrTy, ptrTy, i64Ty}, false);
-        auto* buf = builder.CreateAlloca(i8Ty, llvm::ConstantInt::get(i64Ty, 1024), "concatbuf");
-        auto* lenA = builder.CreateCall(getRtFn("agn_rt_strlen", strlenTy), {lhs.value});
-        builder.CreateCall(getRtFn("agn_rt_memcpy", memcpyTy), {buf, lhs.value, lenA});
-        auto* dest2 = builder.CreateGEP(i8Ty, buf, {lenA});
-        auto* lenB = builder.CreateCall(getRtFn("agn_rt_strlen", strlenTy), {rhs.value});
-        builder.CreateCall(getRtFn("agn_rt_memcpy", memcpyTy), {dest2, rhs.value, lenB});
-        auto* endPtr = builder.CreateGEP(i8Ty, buf, {builder.CreateAdd(lenA, lenB)});
-        builder.CreateStore(llvm::ConstantInt::get(i8Ty, 0), endPtr);
+        auto* len1 = builder.CreateCall(getRtFn("agn_rt_strlen", strlenTy), {s1});
+        auto* len2 = builder.CreateCall(getRtFn("agn_rt_strlen", strlenTy), {s2});
+        auto* len = builder.CreateAdd(len1, len2);
+        auto* buf = callRtAlloc(builder.CreateAdd(len, llvm::ConstantInt::get(i64Ty, 1)));
+        builder.CreateCall(getRtFn("agn_rt_memcpy", memcpyTy), {buf, s1, len1});
+        builder.CreateCall(getRtFn("agn_rt_memcpy", memcpyTy), {builder.CreateGEP(i8Ty, buf, {len1}), s2, len2});
+        builder.CreateStore(llvm::ConstantInt::get(i8Ty, 0), builder.CreateGEP(i8Ty, buf, {len}));
         return TypedValue{buf, Type{TypeKind::String}};
     }
 
@@ -900,7 +894,7 @@ struct Codegen::Impl {
             if (n->op == ast::BinaryOp::Concat) {
                 auto l = genExpr(*n->left);
                 auto r = genExpr(*n->right);
-                return genConcat(l, r);
+                return genConcat(l.value, r.value);
             }
             auto l = genExpr(*n->left);
             auto r = genExpr(*n->right);

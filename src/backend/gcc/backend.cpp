@@ -825,61 +825,70 @@ struct GccBackend::Impl {
         return TypedValue{buf, Type{TypeKind::String}};
     }
 
-    void appendToBuffer(gcc_jit_lvalue* posSlot, gcc_jit_rvalue* buf, gcc_jit_rvalue* src, gcc_jit_rvalue* len) {
-        auto* pos = gcc_jit_lvalue_as_rvalue(posSlot);
-        auto* destAddr = materialize(
-            gcc_jit_lvalue_get_address(gcc_jit_context_new_array_access(ctxt, loc, bitcast(buf, ptrTy), pos), loc), ptrTy);
-        callRt("agn_rt_memcpy", voidTy, {ptrTy, ptrTy, i64Ty}, {destAddr, src, len});
-        gcc_jit_block_add_assignment(curBlock, loc, posSlot,
-                                      gcc_jit_context_new_binary_op(ctxt, loc, GCC_JIT_BINARY_OP_PLUS, i64Ty, pos, len));
-    }
-
     TypedValue genTemplateString(ast::TemplateStringExpr& tmpl) {
-        auto* bufSlot = gcc_jit_function_new_local(curFn, loc, gcc_jit_context_new_array_type(ctxt, loc, u8Ty, 1024),
-                                                     "tmplbuf");
-        auto* buf = bitcast(gcc_jit_lvalue_get_address(bufSlot, loc), ptrTy);
-        auto* posSlot = gcc_jit_function_new_local(curFn, loc, i64Ty, "tmplpos");
-        gcc_jit_block_add_assignment(curBlock, loc, posSlot, constI64(0));
+        struct Piece {
+            gcc_jit_rvalue* value;
+            gcc_jit_rvalue* len;
+            long width = 0;
+            bool padZero = false, hex = false, upper = false;
+        };
+        std::vector<Piece> pieces;
+        gcc_jit_rvalue* total = constI64(1);
+        auto add = [&](gcc_jit_rvalue* a, gcc_jit_rvalue* b) {
+            return gcc_jit_context_new_binary_op(ctxt, loc, GCC_JIT_BINARY_OP_PLUS, i64Ty, a, b);
+        };
 
         for (auto& part : tmpl.parts) {
             if (auto* lit = std::get_if<ast::TemplateLiteralPart>(&part)) {
-                appendToBuffer(posSlot, buf, getStringLiteral(lit->text), constI64(long(lit->text.size())));
+                auto* len = constI64(long(lit->text.size()));
+                pieces.push_back(Piece{getStringLiteral(lit->text), len});
+                total = add(total, len);
                 continue;
             }
             auto* e = std::get_if<ast::TemplateExprPart>(&part);
             auto val = genExpr(*e->expr);
             if (val.type.kind == TypeKind::String) {
-                auto* len = callRt("agn_rt_strlen", i64Ty, {ptrTy}, {val.value});
-                appendToBuffer(posSlot, buf, val.value, len);
+                auto* str = materialize(val.value, ptrTy);
+                auto* len = callRt("agn_rt_strlen", i64Ty, {ptrTy}, {str});
+                pieces.push_back(Piece{str, len});
+                total = add(total, len);
                 continue;
             }
 
-            long width = 0;
-            bool padZero = false, hex = false, upper = false;
+            Piece piece{materialize(toI64(val), i64Ty), nullptr};
             if (e->format) {
-                width = long(e->format->width.value_or(0));
-                padZero = e->format->padding == '0';
-                hex = e->format->formatType == ast::FormatType::Hex || e->format->formatType == ast::FormatType::HexUpper;
-                upper = e->format->formatType == ast::FormatType::HexUpper;
+                piece.width = long(e->format->width.value_or(0));
+                piece.padZero = e->format->padding == '0';
+                piece.hex = e->format->formatType == ast::FormatType::Hex || e->format->formatType == ast::FormatType::HexUpper;
+                piece.upper = e->format->formatType == ast::FormatType::HexUpper;
             }
-
-            auto* pos = gcc_jit_lvalue_as_rvalue(posSlot);
-            auto* destAddr = materialize(
-                gcc_jit_lvalue_get_address(gcc_jit_context_new_array_access(ctxt, loc, bitcast(buf, ptrTy), pos), loc), ptrTy);
-            gcc_jit_rvalue* written;
-            if (hex) {
-                written = callRt("agn_rt_format_hex", i64Ty, {ptrTy, u64Ty, i64Ty, i64Ty, i64Ty},
-                                  {destAddr, toI64(val), constI64(width), constI64(padZero ? 1 : 0), constI64(upper ? 1 : 0)});
-            } else {
-                written = callRt("agn_rt_format_int", i64Ty, {ptrTy, i64Ty, i64Ty, i64Ty},
-                                  {destAddr, toI64(val), constI64(width), constI64(padZero ? 1 : 0)});
-            }
-            gcc_jit_block_add_assignment(curBlock, loc, posSlot,
-                                          gcc_jit_context_new_binary_op(ctxt, loc, GCC_JIT_BINARY_OP_PLUS, i64Ty, pos, written));
+            long maxDigits = piece.hex ? 16 : 20;
+            total = add(total, constI64(std::max(piece.width, maxDigits)));
+            pieces.push_back(piece);
         }
 
-        auto* pos = gcc_jit_lvalue_as_rvalue(posSlot);
-        auto* endLv = gcc_jit_context_new_array_access(ctxt, loc, bitcast(buf, ptrTy), pos);
+        auto* buf = callRtAlloc(total);
+        auto* posSlot = gcc_jit_function_new_local(curFn, loc, i64Ty, "tmplpos");
+        gcc_jit_block_add_assignment(curBlock, loc, posSlot, constI64(0));
+        for (auto& piece : pieces) {
+            auto* pos = gcc_jit_lvalue_as_rvalue(posSlot);
+            auto* dest = materialize(
+                gcc_jit_lvalue_get_address(gcc_jit_context_new_array_access(ctxt, loc, bitcast(buf, ptrTy), pos), loc), ptrTy);
+            gcc_jit_rvalue* written = piece.len;
+            if (piece.len) {
+                callRt("agn_rt_memcpy", voidTy, {ptrTy, ptrTy, i64Ty}, {dest, piece.value, piece.len});
+            } else if (piece.hex) {
+                written = callRt("agn_rt_format_hex", i64Ty, {ptrTy, u64Ty, i64Ty, i64Ty, i64Ty},
+                                  {dest, gcc_jit_context_new_cast(ctxt, loc, piece.value, u64Ty), constI64(piece.width),
+                                   constI64(piece.padZero ? 1 : 0), constI64(piece.upper ? 1 : 0)});
+            } else {
+                written = callRt("agn_rt_format_int", i64Ty, {ptrTy, i64Ty, i64Ty, i64Ty},
+                                  {dest, piece.value, constI64(piece.width), constI64(piece.padZero ? 1 : 0)});
+            }
+            gcc_jit_block_add_assignment(curBlock, loc, posSlot, add(pos, written));
+        }
+
+        auto* endLv = gcc_jit_context_new_array_access(ctxt, loc, bitcast(buf, ptrTy), gcc_jit_lvalue_as_rvalue(posSlot));
         gcc_jit_block_add_assignment(curBlock, loc, endLv, gcc_jit_context_new_rvalue_from_int(ctxt, u8Ty, 0));
         return TypedValue{buf, Type{TypeKind::String}};
     }
