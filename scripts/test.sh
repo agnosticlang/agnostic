@@ -191,8 +191,10 @@ expect_gcc_run string_stdlib "scripts/testdata/string_test.agn" \
 
 expect_llvm_run os_string "scripts/testdata/os_string_test.agn" \
     "$(printf 'HELLO\nworld\ntrue\n6\nfalse\ntrue\nfalse\ntrue\nfalse\ntrue\nfalse\ntrue\n101\nworld\nargcount_ok\ntrue\n9')"
+expect_llvm_run loop_locals "scripts/testdata/loop_locals_test.agn" "1999999"
 expect_gcc_run os_string "scripts/testdata/os_string_test.agn" \
     "$(printf 'HELLO\nworld\ntrue\n6\nfalse\ntrue\nfalse\ntrue\nfalse\ntrue\nfalse\ntrue\n101\nworld\nargcount_ok\ntrue\n9')"
+expect_gcc_run loop_locals "scripts/testdata/loop_locals_test.agn" "1999999"
 
 expect_freebsd_compile closures "examples/closures.agn"
 expect_freebsd_compile structs "examples/structs.agn"
@@ -271,6 +273,7 @@ expect_windows_run string_stdlib "scripts/testdata/string_test.agn" \
     "$(printf '5\n0\n-1\n1\nfoobar\ntrue\nfalse')"
 expect_windows_run os_string "scripts/testdata/os_string_test.agn" \
     "$(printf 'HELLO\nworld\ntrue\n6\nfalse\ntrue\nfalse\ntrue\nfalse\ntrue\nfalse\ntrue\n101\nworld\nargcount_ok\ntrue\n9')"
+expect_windows_run loop_locals "scripts/testdata/loop_locals_test.agn" "1999999"
 
 expect_reject bool_to_int "scripts/testdata/reject/bool_to_int.agn" "declared as i64, initialized with bool"
 expect_reject int_to_bool "scripts/testdata/reject/int_to_bool.agn" "declared as bool, initialized with i64"

@@ -361,10 +361,15 @@ struct Codegen::Impl {
         }
     }
 
-    // captured locals must outlive this stack frame, so box them on the heap instead
+    llvm::AllocaInst* entryAlloca(llvm::Type* type, const std::string& name) {
+        auto& entry = curFn->getEntryBlock();
+        llvm::IRBuilder<> entryBuilder(&entry, entry.begin());
+        return entryBuilder.CreateAlloca(type, nullptr, name);
+    }
+
     llvm::Value* allocSlot(const std::string& name, const Type& type) {
         if (capturedInCurrentFn.count(name)) return callRtAlloc(llvm::ConstantInt::get(i64Ty, typeSize(type)));
-        return builder.CreateAlloca(llvmType(type), nullptr, name);
+        return entryAlloca(llvmType(type), name);
     }
 
     void collectCapturedExpr(ast::Expression& expr, std::unordered_set<std::string>& out) {
@@ -797,7 +802,7 @@ struct Codegen::Impl {
 
     TypedValue genTemplateString(ast::TemplateStringExpr& tmpl) {
         auto* buf = builder.CreateAlloca(i8Ty, llvm::ConstantInt::get(i64Ty, 1024), "tmplbuf");
-        auto* posAlloca = builder.CreateAlloca(i64Ty, nullptr, "tmplpos");
+        auto* posAlloca = entryAlloca(i64Ty, "tmplpos");
         builder.CreateStore(llvm::ConstantInt::get(i64Ty, 0), posAlloca);
 
         for (auto& part : tmpl.parts) {
@@ -1189,7 +1194,7 @@ struct Codegen::Impl {
             Type arr{TypeKind::Array};
             arr.elementType = std::make_shared<Type>(elem);
             arr.arraySize = n->size;
-            auto* slot = builder.CreateAlloca(llvmType(arr), nullptr, n->name);
+            auto* slot = entryAlloca(llvmType(arr), n->name);
             locals[n->name] = LocalVar{slot, arr};
             return;
         }
