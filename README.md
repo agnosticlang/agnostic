@@ -15,7 +15,7 @@ Write Once, Run Anywhere.
 
 This repository contains the Agnostic compiler, standard library and tools.
 
-### Building
+### Building ⠀
 
 ```sh
 cmake -S . -B build
